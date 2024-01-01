@@ -16,7 +16,27 @@
 CHIP PC {
     IN in[16],inc, load, reset;
     OUT out[16];
-    
+
     PARTS:
-    //// Replace this comment with your code.
+    /* reset -> load -> incの順に優先する
+     * | inc | load | reset | sel1 | sel0 |
+     * |-----|------|-------|------|------|
+     * | 0   | 0    | 0     | 0    | 0    |
+     * | 1   | 0    | 0     | 0    | 1    |
+     * | 0   | 1    | 0     | 1    | 0    |
+     * | 0   | 0    | 1     | 1    | 1    |
+     * | 1   | 1    | 0     | 1    | 0    |
+     * | 1   | 0    | 1     | 1    | 1    |
+     * | 0   | 1    | 1     | 1    | 1    |
+     * | 1   | 1    | 1     | 1    | 1    |
+     */
+    Not(in=load, out=notLoad);
+    And(a=inc, b=notLoad, out=incAndNotLoad);
+    Or(a=incAndNotLoad, b=reset, out=sel0);
+    Or(a=load, b=reset, out=sel1);
+    Add16(a=prev, b[0]=true, b[1..15]=false, out=incremented);
+    Mux4Way16(a=prev, b=incremented,
+              c=in, d[0..15]=false,
+              sel[0]=sel0, sel[1]=sel1, out=selected);
+    Register(in=selected, load=true, out=out, out=prev);
 }
