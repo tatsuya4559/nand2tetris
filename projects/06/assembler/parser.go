@@ -71,23 +71,25 @@ func (p *Parser) HasMoreCommand() bool {
 	return !p.eof
 }
 
+// scanCommand scans each asm command ignoring whitespaces, newlines and comments.
+// It returns empty string for blank lines and comment only lines.
 func scanCommand(data []byte, atEOF bool) (advance int, token []byte, err error) {
-	advance, token, err = bufio.ScanLines(data, atEOF)
-	if len(token) == 0 || err != nil {
-		return
+	start := 0
+	for {
+		advance, token, err = bufio.ScanLines(data[start:], atEOF)
+		if token == nil || err != nil {
+			return
+		}
+		// If token contains comment, remove it.
+		if i := bytes.Index(token, commentPrefix); i >= 0 {
+			token = token[:i]
+		}
+		token = bytes.TrimSpace(token)
+		if len(token) > 0 {
+			return start + advance, token, nil
+		}
+		start = start + advance
 	}
-	// If token contains comment, remove it.
-	if i := bytes.Index(token, commentPrefix); i >= 0 {
-		token = token[:i]
-	}
-	// NOTE: bytes.TrimSpace([]byte("   ")) returns nil :(
-	token = bytes.TrimSpace(token)
-	// If we return nil as token, scanner assumes that we got to EOF.
-	// Here we return empty byte slice to avoid that.
-	if len(token) == 0 {
-		token = make([]byte, 0, 0)
-	}
-	return advance, token, nil
 }
 
 func (p *Parser) Advance() {
