@@ -29,5 +29,6 @@ func main() {
 	parser := NewParser(asmFile)
 	for parser.HasMoreCommand() {
 		parser.Advance()
+		fmt.Println(parser.CurrentCommand())
 	}
 }

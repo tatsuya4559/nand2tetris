@@ -85,7 +85,17 @@ func (p *Parser) CurrentCommand() Command {
 	return p.currentCommand
 }
 
-var commentPrefix = []byte("//")
+var (
+	commentPrefix = []byte("//")
+	whiteSpaces   = []string{" ", "\t"}
+)
+
+func removeWhiteSpaces(s []byte) []byte {
+	for _, space := range whiteSpaces {
+		s = bytes.ReplaceAll(s, []byte(space), []byte(""))
+	}
+	return s
+}
 
 // scanCommand scans each asm command ignoring whitespaces, newlines and comments.
 // It returns empty string for blank lines and comment only lines.
@@ -100,7 +110,7 @@ func scanCommand(data []byte, atEOF bool) (advance int, token []byte, err error)
 		if i := bytes.Index(token, commentPrefix); i >= 0 {
 			token = token[:i]
 		}
-		token = bytes.TrimSpace(token)
+		token = removeWhiteSpaces(token)
 		if len(token) > 0 {
 			return start + advance, token, nil
 		}
@@ -149,14 +159,14 @@ func parseCCommand(word string) (*CCommand, error) {
 	// dest=comp; jump
 	cmd := CCommand{}
 	if i := strings.Index(word, "="); i >= 0 {
-		cmd.Dest = strings.TrimSpace(word[:i])
+		cmd.Dest = word[:i]
 		word = word[i+1:]
 	}
 	if i := strings.Index(word, ";"); i >= 0 {
-		cmd.Jump = strings.TrimSpace(word[i+1:])
+		cmd.Jump = word[i+1:]
 		word = word[:i]
 	}
-	cmd.Comp = strings.TrimSpace(word)
+	cmd.Comp = word
 	return &cmd, nil
 }
 
@@ -166,7 +176,7 @@ func parseLCommand(word string) (*LCommand, error) {
 		return nil, fmt.Errorf("L-Command format is invalid: %q", word)
 	}
 	cmd := LCommand{
-		Symbol: strings.TrimSpace(word[1 : len(word)-1]),
+		Symbol: word[1 : len(word)-1],
 	}
 	return &cmd, nil
 }
