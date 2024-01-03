@@ -10,6 +10,11 @@ func NewSet[T comparable](elem ...T) Set[T] {
 	return set
 }
 
+func (s Set[T]) Contains(elem T) bool {
+	_, ok := s[elem]
+	return ok
+}
+
 func Assert(condition bool, message string) {
 	if !condition {
 		panic(message)

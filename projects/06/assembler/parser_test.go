@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -62,10 +63,10 @@ func TestScanCommand(t *testing.T) {
 
 	for i, want := range wants {
 		if !scanner.Scan() {
-			t.Fatalf("Failed to scan at line %d", i+1)
+			t.Fatalf("failed to scan at line %d", i+1)
 		}
 		if got := scanner.Text(); got != want {
-			t.Errorf("Want %q, but got %q in line %d", want, got, i+1)
+			t.Errorf("want %q, but got %q in line %d", want, got, i+1)
 		}
 	}
 }
@@ -126,7 +127,32 @@ func TestParser(t *testing.T) {
 	for i, want := range wants {
 		parser.Advance()
 		if got := parser.CurrentCommand().String(); got != want {
-			t.Errorf("Want %q, but got %q in line %d", want, got, i+1)
+			t.Errorf("want %q, but got %q in line %d", want, got, i+1)
 		}
+	}
+}
+
+func TestIsValidSymbol(t *testing.T) {
+	tests := []struct {
+		input string
+		want  bool
+	}{
+		{"foo", true},
+		{"foo1._$:", true},
+		{"1foo", false},
+		{"123", true},
+		{"42.195", false},
+		{"-1", false},
+		{"0", true},
+		{"01", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("isValidSymbol(%q)", tt.input), func(t *testing.T) {
+			got := isValidSymbol(tt.input)
+			if got != tt.want {
+				t.Errorf("want %v, but got %v", tt.want, got)
+			}
+		})
 	}
 }

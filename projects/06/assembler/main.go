@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 )
@@ -28,7 +29,9 @@ func main() {
 
 	parser := NewParser(asmFile)
 	for parser.HasMoreCommand() {
-		parser.Advance()
+		if err := parser.Advance(); err != nil {
+			log.Fatal(err)
+		}
 		fmt.Println(parser.CurrentCommand())
 	}
 }
