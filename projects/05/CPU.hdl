@@ -32,5 +32,53 @@ CHIP CPU {
         pc[15];          // Address of next instruction
 
     PARTS:
-    //// Replace this comment with your code.
+    /* decode instruction [ixxa cccc ccdd djjj] */
+
+    /*** ARegister ***/
+    /* if A instr then use a else use b */
+    Mux16(a[0..14]=instruction[0..14], a[15]=false,
+          b=aluout, sel=instruction[15], out=ain);
+    /* load to ARegister when A instr or ( C instr & destination is A ) */
+    Not(in=instruction[15], out=isAInstr);
+    And(a=instruction[15], b=instruction[5], out=isCInstrAndDestIsAReg);
+    Or(a=isAInstr, b=isCInstrAndDestIsAReg, out=aload);
+    /* addressM is in ARegister */
+    ARegister(in=ain, load=aload, out=aout, out[0..14]=addressM);
+
+    /*** DRegister ***/
+    /* load to DRegister when C instr & destination is D */
+    And(a=instruction[15], b=instruction[4], out=dload);
+    DRegister(in=aluout, load=dload, out=dout);
+
+    /*** ALU ***/
+    /* x is always DRegister
+     * y is ARegister when a bit is 0
+     *      inM       when a bit is 1 */
+    Mux16(a=aout, b=inM, sel=instruction[12], out=y);
+    /* pass cccccc bits to zx ~ no */
+    ALU(x=dout, y=y,
+        zx=instruction[11],
+        nx=instruction[10],
+        zy=instruction[9],
+        ny=instruction[8],
+        f=instruction[7],
+        no=instruction[6],
+        out=aluout, out=outM, zr=aluOutIsZero, ng=aluOutIsNegative);
+
+    /* write to M when C instr & destination is M */
+    And(a=instruction[15], b=instruction[3], out=writeM);
+
+    /* jjj = j1 j2 j3 = out<0 out=0 out>0 */
+    And(a=instruction[2], b=aluOutIsNegative, out=j1);
+    And(a=instruction[1], b=aluOutIsZero, out=j2);
+    Or(a=aluOutIsNegative, b=aluOutIsZero, out=aluOutLEZero);
+    Not(in=aluOutLEZero, out=aluOutIsPositive);
+    And(a=instruction[0], b=aluOutIsPositive, out=j3);
+    Or(a=j1, b=j2, out=j1j2);
+    Or(a=j1j2, b=j3, out=j1j2j3);
+    /* should jump when C instr */
+    And(a=instruction[15], b=j1j2j3, out=shouldJump);
+
+    /*** PC ***/
+    PC(in=aout, load=shouldJump, inc=true, reset=reset, out[0..14]=pc);
 }
