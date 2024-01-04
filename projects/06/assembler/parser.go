@@ -11,7 +11,6 @@ import (
 
 type Parser struct {
 	scanner        *bufio.Scanner
-	buffer         *strings.Builder
 	currentCommand Command
 	eof            bool
 }
@@ -19,15 +18,7 @@ type Parser struct {
 func NewParser(r io.Reader) *Parser {
 	scanner := bufio.NewScanner(r)
 	scanner.Split(scanCommand)
-	buffer := &strings.Builder{}
-	return &Parser{
-		scanner: scanner,
-		buffer:  buffer,
-	}
-}
-
-func (p *Parser) HasMoreCommand() bool {
-	return !p.eof
+	return &Parser{scanner: scanner}
 }
 
 func (p *Parser) CurrentCommand() Command {
@@ -67,22 +58,26 @@ func scanCommand(data []byte, atEOF bool) (advance int, token []byte, err error)
 	}
 }
 
-func (p *Parser) Advance() (scanned bool, err error) {
+// Parse scans a command and parse it.
+// If successfully parsed it returns true, otherwise returns false.
+func (p *Parser) Parse() bool {
 	if !p.scanner.Scan() {
 		if err := p.scanner.Err(); err != nil {
-			return false, fmt.Errorf("failed to scan asm file: %w", err)
+			Die("failed to scan asm file: %v", err)
 		}
 		p.eof = true
-		return false, nil
+		p.currentCommand = nil
+		return false
 	}
 
 	word := p.scanner.Text()
 	cmd, err := parse(word)
 	if err != nil {
-		return false, err
+		Die(err.Error())
 	}
+
 	p.currentCommand = cmd
-	return true, nil
+	return true
 }
 
 func parse(word string) (Command, error) {
@@ -110,7 +105,7 @@ func isValidDecimal(symbol string) bool {
 	return true
 }
 
-func isSymbol(r rune) bool {
+func isLetter(r rune) bool {
 	return unicode.IsDigit(r) ||
 		('a' <= r && r <= 'z') ||
 		('A' <= r && r <= 'Z') ||
@@ -125,7 +120,7 @@ func isValidName(symbol string) bool {
 		if len(symbol) > 1 && i == 0 && unicode.IsDigit(r) {
 			return false
 		}
-		if !isSymbol(r) {
+		if !isLetter(r) {
 			return false
 		}
 	}
@@ -144,10 +139,9 @@ var (
 	jumpMnemonics = NewSet("", "JGT", "JEQ", "JGE", "JLT", "JNE", "JLE", "JMP")
 )
 
+// parseACommand parses `@symbol`
 func parseACommand(word string) (*ACommand, error) {
-	// @symbol
-	Assert(word[0] == '@', "A-Command must start with '@'")
-	symbol := word[1:]
+	symbol := word[1:] // remove @
 	if !isValidSymbol(symbol) {
 		return nil, NewParseError("invalid symbol", symbol)
 	}
@@ -155,13 +149,13 @@ func parseACommand(word string) (*ACommand, error) {
 	return &cmd, nil
 }
 
+// parseCCommand parses `dest=comp; jump`
 func parseCCommand(word string) (*CCommand, error) {
-	// dest=comp; jump
 	cmd := CCommand{}
 	if i := strings.Index(word, "="); i >= 0 {
 		dest := word[:i]
 		if !destMnemonics.Contains(dest) {
-			return nil, NewParseError("invalid dest mnemonic", dest)
+			return nil, NewParseError("unknown dest mnemonic", dest)
 		}
 		cmd.Dest = dest
 		word = word[i+1:]
@@ -169,20 +163,20 @@ func parseCCommand(word string) (*CCommand, error) {
 	if i := strings.Index(word, ";"); i >= 0 {
 		jump := word[i+1:]
 		if !jumpMnemonics.Contains(jump) {
-			return nil, NewParseError("invalid jump mnemonic", jump)
+			return nil, NewParseError("unknown jump mnemonic", jump)
 		}
 		cmd.Jump = jump
 		word = word[:i]
 	}
 	if !compMnemonics.Contains(word) {
-		return nil, NewParseError("invalid comp mnemonic", word)
+		return nil, NewParseError("unknown comp mnemonic", word)
 	}
 	cmd.Comp = word
 	return &cmd, nil
 }
 
+// parseLCommand parses `(SYMBOL)`
 func parseLCommand(word string) (*LCommand, error) {
-	// (SYMBOL)
 	if word[len(word)-1] != ')' {
 		return nil, NewParseError("closing paren is not found", word)
 	}
@@ -197,7 +191,6 @@ func parseLCommand(word string) (*LCommand, error) {
 type ParseError struct {
 	message string
 	word    string
-	err     error
 }
 
 func NewParseError(message, word string) *ParseError {
@@ -208,12 +201,5 @@ func NewParseError(message, word string) *ParseError {
 }
 
 func (e *ParseError) Error() string {
-	if e.err == nil {
-		return fmt.Sprintf("parse error: %s at %q", e.message, e.word)
-	}
-	return fmt.Sprintf("parse error: %s at %q: %v", e.message, e.word, e.err)
-}
-
-func (e *ParseError) Unwrap() error {
-	return e.err
+	return fmt.Sprintf("parse error: %s at %q", e.message, e.word)
 }

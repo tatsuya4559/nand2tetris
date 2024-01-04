@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -24,29 +23,32 @@ func main() {
 
 	asmFile, err := os.Open(filename)
 	if err != nil {
-		panic(err)
+		Die("failed to open asm file: %v", err)
 	}
 	defer asmFile.Close()
 
 	hackFilename := strings.TrimSuffix(filename, filepath.Ext(filename)) + ".hack"
 	hackFile, err := os.Create(hackFilename)
 	if err != nil {
-		panic(err)
+		Die("failed to create hack file: %v", err)
 	}
 	defer hackFile.Close()
 
 	parser := NewParser(asmFile)
-	for parser.HasMoreCommand() {
-		scanned, err := parser.Advance()
+	for parser.Parse() {
+		var bin uint16
+		var err error
+		switch cmd := parser.CurrentCommand().(type) {
+		case *ACommand:
+			bin, err = ConvertACommand(cmd)
+		case *CCommand:
+			bin, err = ConvertCCommand(cmd)
+		default:
+			Die("Command %v does not have binary representation", cmd)
+		}
 		if err != nil {
-			log.Fatal(err)
+			Die("failed to convert command to binary: %v", err)
 		}
-		if scanned {
-			bin, err := CommandToBinaryCode(parser.CurrentCommand())
-			if err != nil {
-				panic(err)
-			}
-			fmt.Fprintf(hackFile, "%016b\n", bin)
-		}
+		fmt.Fprintf(hackFile, "%016b\n", bin)
 	}
 }

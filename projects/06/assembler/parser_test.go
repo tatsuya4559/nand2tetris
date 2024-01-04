@@ -126,14 +126,14 @@ func TestParser(t *testing.T) {
 	parser := NewParser(strings.NewReader(input))
 
 	for i, want := range wants {
-		parser.Advance()
+		parser.Parse()
 		if got := parser.CurrentCommand().String(); got != want {
 			t.Errorf("want %q, but got %q in line %d", want, got, i+1)
 		}
 	}
 
-	if scanned, _ := parser.Advance(); scanned {
-		t.Errorf("unexpectedly scanned some command")
+	if parser.Parse() {
+		t.Errorf("unexpectedly parsed some command: %v", parser.CurrentCommand())
 	}
 }
 

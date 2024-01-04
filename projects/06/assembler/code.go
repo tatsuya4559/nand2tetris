@@ -6,36 +6,36 @@ import (
 )
 
 const (
-	_JGT uint16 = 1 << iota
-	_JEQ
-	_JLT
-	_M
-	_D
-	_A
+	JGT uint16 = 1 << iota
+	JEQ
+	JLT
+	M
+	D
+	A
 
-	_C_INSTRUCTION_MARKER = 0b111 << 13
+	C_INSTRUCTION_MARKER = 0b111 << 13
 )
 
 var (
 	jumpMnemonicToBinary = map[string]uint16{
 		"":    0,
-		"JGT": _JGT,
-		"JEQ": _JEQ,
-		"JGE": _JGT | _JEQ,
-		"JLT": _JLT,
-		"JNE": _JLT | _JGT,
-		"JLE": _JLT | _JEQ,
-		"JMP": _JLT | _JEQ | _JGT,
+		"JGT": JGT,
+		"JEQ": JEQ,
+		"JGE": JGT | JEQ,
+		"JLT": JLT,
+		"JNE": JLT | JGT,
+		"JLE": JLT | JEQ,
+		"JMP": JLT | JEQ | JGT,
 	}
 	destMnemonicToBinary = map[string]uint16{
 		"":    0,
-		"A":   _A,
-		"D":   _D,
-		"M":   _M,
-		"AD":  _A | _D,
-		"AM":  _A | _M,
-		"MD":  _M | _D,
-		"AMD": _A | _M | _D,
+		"A":   A,
+		"D":   D,
+		"M":   M,
+		"AD":  A | D,
+		"AM":  A | M,
+		"MD":  M | D,
+		"AMD": A | M | D,
 	}
 	compMnemonicToBinary = map[string]uint16{
 		"0":   0b0_101_010 << 6,
@@ -69,21 +69,18 @@ var (
 	}
 )
 
-func CommandToBinaryCode(c Command) (uint16, error) {
-	switch cmd := c.(type) {
-	case *ACommand:
-		addr, err := strconv.ParseUint(cmd.Symbol, 10, 16)
-		if err != nil {
-			return 0, fmt.Errorf("cannot convert symbol(%s) into uint16: %w", cmd.Symbol, err)
-		}
-		bin := uint16(addr)
-		return bin, nil
-	case *CCommand:
-		comp := compMnemonicToBinary[cmd.Comp]
-		dest := destMnemonicToBinary[cmd.Dest]
-		jump := jumpMnemonicToBinary[cmd.Jump]
-		return comp | dest | jump | _C_INSTRUCTION_MARKER, nil
-	default:
-		panic(fmt.Sprintf("Command %v does not have binary representation", c))
+func ConvertACommand(c *ACommand) (uint16, error) {
+	addr, err := strconv.ParseUint(c.Symbol, 10, 16)
+	if err != nil {
+		return 0, fmt.Errorf("cannot convert symbol(%s) into uint16: %w", c.Symbol, err)
 	}
+	bin := uint16(addr)
+	return bin, nil
+}
+
+func ConvertCCommand(c *CCommand) (uint16, error) {
+	comp := compMnemonicToBinary[c.Comp]
+	dest := destMnemonicToBinary[c.Dest]
+	jump := jumpMnemonicToBinary[c.Jump]
+	return comp | dest | jump | C_INSTRUCTION_MARKER, nil
 }

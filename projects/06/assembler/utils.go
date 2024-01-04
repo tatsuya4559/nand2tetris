@@ -1,5 +1,10 @@
 package main
 
+import (
+	"fmt"
+	"os"
+)
+
 type Set[T comparable] map[T]struct{}
 
 func NewSet[T comparable](elem ...T) Set[T] {
@@ -19,4 +24,9 @@ func Assert(condition bool, message string) {
 	if !condition {
 		panic(message)
 	}
+}
+
+func Die(format string, args ...any) {
+	fmt.Fprintf(os.Stderr, format+"\n", args...)
+	os.Exit(1)
 }
