@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 func assertGivenFileIsAssembly(filename string) {
@@ -27,11 +28,25 @@ func main() {
 	}
 	defer asmFile.Close()
 
+	hackFilename := strings.TrimSuffix(filename, filepath.Ext(filename)) + ".hack"
+	hackFile, err := os.Create(hackFilename)
+	if err != nil {
+		panic(err)
+	}
+	defer hackFile.Close()
+
 	parser := NewParser(asmFile)
 	for parser.HasMoreCommand() {
-		if err := parser.Advance(); err != nil {
+		scanned, err := parser.Advance()
+		if err != nil {
 			log.Fatal(err)
 		}
-		fmt.Println(parser.CurrentCommand())
+		if scanned {
+			bin, err := CommandToBinaryCode(parser.CurrentCommand())
+			if err != nil {
+				panic(err)
+			}
+			fmt.Fprintf(hackFile, "%016b\n", bin)
+		}
 	}
 }

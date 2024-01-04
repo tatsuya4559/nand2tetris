@@ -97,7 +97,8 @@ func TestParser(t *testing.T) {
    M=D
 (END)
    @END
-   0; JMP`
+   0; JMP
+`
 
 	wants := []string{
 		"@R0",
@@ -129,6 +130,10 @@ func TestParser(t *testing.T) {
 		if got := parser.CurrentCommand().String(); got != want {
 			t.Errorf("want %q, but got %q in line %d", want, got, i+1)
 		}
+	}
+
+	if scanned, _ := parser.Advance(); scanned {
+		t.Errorf("unexpectedly scanned some command")
 	}
 }
 

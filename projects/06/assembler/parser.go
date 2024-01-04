@@ -67,22 +67,22 @@ func scanCommand(data []byte, atEOF bool) (advance int, token []byte, err error)
 	}
 }
 
-func (p *Parser) Advance() error {
+func (p *Parser) Advance() (scanned bool, err error) {
 	if !p.scanner.Scan() {
 		if err := p.scanner.Err(); err != nil {
-			return fmt.Errorf("failed to scan asm file: %w", err)
+			return false, fmt.Errorf("failed to scan asm file: %w", err)
 		}
 		p.eof = true
-		return nil
+		return false, nil
 	}
 
 	word := p.scanner.Text()
 	cmd, err := parse(word)
 	if err != nil {
-		return err
+		return false, err
 	}
 	p.currentCommand = cmd
-	return nil
+	return true, nil
 }
 
 func parse(word string) (Command, error) {
