@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -27,6 +28,11 @@ func main() {
 	}
 	defer asmFile.Close()
 
+	// 1pass
+	parser := NewParser(asmFile)
+	symbolTable := NewSymbolTable()
+	symbolTable.LoadLabelAddress(parser)
+
 	hackFilename := strings.TrimSuffix(filename, filepath.Ext(filename)) + ".hack"
 	hackFile, err := os.Create(hackFilename)
 	if err != nil {
@@ -34,17 +40,25 @@ func main() {
 	}
 	defer hackFile.Close()
 
-	parser := NewParser(asmFile)
+	// 2pass
+	asmFile.Seek(0, io.SeekStart)
+	parser = NewParser(asmFile)
 	for parser.Parse() {
 		var bin uint16
 		var err error
 		switch cmd := parser.CurrentCommand().(type) {
 		case *ACommand:
-			bin, err = ConvertACommand(cmd)
+			if cmd.SymbolIsDigit {
+				bin, err = ConvertACommand(cmd)
+			} else if addr, ok := symbolTable.GetAddress(cmd.Symbol); ok {
+				bin = addr
+			} else {
+				bin = symbolTable.AddAutoEntry(cmd.Symbol)
+			}
 		case *CCommand:
 			bin, err = ConvertCCommand(cmd)
 		default:
-			Die("Command %v does not have binary representation", cmd)
+			continue
 		}
 		if err != nil {
 			Die("failed to convert command to binary: %v", err)

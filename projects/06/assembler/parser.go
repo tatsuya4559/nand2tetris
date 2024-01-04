@@ -145,7 +145,10 @@ func parseACommand(word string) (*ACommand, error) {
 	if !isValidSymbol(symbol) {
 		return nil, NewParseError("invalid symbol", symbol)
 	}
-	cmd := ACommand{Symbol: symbol}
+	cmd := ACommand{
+		Symbol:        symbol,
+		SymbolIsDigit: isValidDecimal(symbol),
+	}
 	return &cmd, nil
 }
 

@@ -20,12 +20,6 @@ func (s Set[T]) Contains(elem T) bool {
 	return ok
 }
 
-func Assert(condition bool, message string) {
-	if !condition {
-		panic(message)
-	}
-}
-
 func Die(format string, args ...any) {
 	fmt.Fprintf(os.Stderr, format+"\n", args...)
 	os.Exit(1)

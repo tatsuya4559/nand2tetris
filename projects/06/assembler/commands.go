@@ -16,7 +16,8 @@ type Command interface {
 }
 
 type ACommand struct {
-	Symbol string
+	Symbol        string
+	SymbolIsDigit bool
 }
 
 func (c *ACommand) Type() CommandType {
