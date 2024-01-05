@@ -61,7 +61,8 @@ func (s *SymbolTable) LoadLabelAddress(p *Parser) {
 	for p.Parse() {
 		if cmd, ok := p.CurrentCommand().(*LCommand); ok {
 			s.AddEntry(cmd.Symbol, romAddr)
+		} else {
+			romAddr++
 		}
-		romAddr++
 	}
 }
