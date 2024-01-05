@@ -13,7 +13,7 @@ get_diff() {
     ./assembler $asm
     mv $hack $got
 
-    ../../../tools/Assembler.sh $asm
+    ../tools/Assembler.sh $asm
     mv .hack $want
 
     git diff --no-index $want $got
