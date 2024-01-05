@@ -95,7 +95,7 @@ func parse(word string) (Command, error) {
 // It must not be negative.
 func isValidDecimal(symbol string) bool {
 	for i, r := range symbol {
-		if i == 0 && r == '0' {
+		if i == 0 && r == '0' && len(symbol) > 1 {
 			return false
 		}
 		if !unicode.IsDigit(r) {
@@ -117,7 +117,7 @@ func isLetter(r rune) bool {
 
 func isValidName(symbol string) bool {
 	for i, r := range symbol {
-		if len(symbol) > 1 && i == 0 && unicode.IsDigit(r) {
+		if i == 0 && unicode.IsDigit(r) {
 			return false
 		}
 		if !isLetter(r) {

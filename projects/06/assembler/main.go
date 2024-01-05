@@ -11,8 +11,7 @@ import (
 
 func assertGivenFileIsAssembly(filename string) {
 	if filepath.Ext(filename) != ".asm" {
-		fmt.Fprintf(os.Stderr, "File must be .asm file\n")
-		os.Exit(1)
+		Die("File must be .asm file")
 	}
 }
 
