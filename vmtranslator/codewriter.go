@@ -30,6 +30,11 @@ func (w *CodeWriter) write(s string) {
 	io.WriteString(w.out, "\n")
 }
 
+func (w *CodeWriter) genSequencialLabel(prefix string) string {
+	seq := w.seqGen.gen(prefix)
+	return fmt.Sprintf("%s$%d", prefix, seq)
+}
+
 func (w *CodeWriter) WriteArithmetic(command string) {
 	// Comments assume following initial state.
 	//  stack
@@ -65,8 +70,7 @@ func (w *CodeWriter) WriteArithmetic(command string) {
 		w.write("A=A-1") // point x
 		w.write("D=M-D") // D = x - y
 
-		seq := w.seqGen.gen("SET_TRUE")
-		endSetTrueLabel := fmt.Sprintf("END_SET_TRUE$%d", seq)
+		endSetTrueLabel := w.genSequencialLabel("END_SET_TRUE")
 
 		// set false
 		w.write("@SP")
@@ -88,8 +92,7 @@ func (w *CodeWriter) WriteArithmetic(command string) {
 		w.write("A=A-1") // point x
 		w.write("D=M-D") // D = x - y
 
-		seq := w.seqGen.gen("SET_TRUE")
-		endSetTrueLabel := fmt.Sprintf("END_SET_TRUE$%d", seq)
+		endSetTrueLabel := w.genSequencialLabel("END_SET_TRUE")
 
 		// set false
 		w.write("@SP")
@@ -111,8 +114,7 @@ func (w *CodeWriter) WriteArithmetic(command string) {
 		w.write("A=A-1") // point x
 		w.write("D=M-D") // D = x - y
 
-		seq := w.seqGen.gen("SET_TRUE")
-		endSetTrueLabel := fmt.Sprintf("END_SET_TRUE$%d", seq)
+		endSetTrueLabel := w.genSequencialLabel("END_SET_TRUE")
 
 		// set false
 		w.write("@SP")
