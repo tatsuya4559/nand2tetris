@@ -148,25 +148,155 @@ func (w *CodeWriter) WriteArithmetic(command string) {
 	}
 }
 
-func (w *CodeWriter) WritePushPop(typ CommandType, segment string, index int) {
-	if segment == "constant" {
-		// D = index
+func (w *CodeWriter) writePush(segment string, index int) {
+	switch segment {
+	case "argument":
+		w.write("@ARG")
+		w.write("D=M")
+		w.write(fmt.Sprintf("@%d", index))
+		w.write("A=D+A")
+		w.write("D=M")
+	case "local":
+		w.write("@LCL")
+		w.write("D=M")
+		w.write(fmt.Sprintf("@%d", index))
+		w.write("A=D+A")
+		w.write("D=M")
+	case "static":
+		w.write("@R15")
+		w.write("A=A+1")
+		w.write("D=A")
+		w.write(fmt.Sprintf("@%d", index))
+		w.write("A=D+A")
+		w.write("D=M")
+	case "constant":
 		w.write(fmt.Sprintf("@%d", index))
 		w.write("D=A")
+	case "this":
+		w.write("@THIS")
+		w.write("D=M")
+		w.write(fmt.Sprintf("@%d", index))
+		w.write("A=D+A")
+		w.write("D=M")
+	case "that":
+		w.write("@THAT")
+		w.write("D=M")
+		w.write(fmt.Sprintf("@%d", index))
+		w.write("A=D+A")
+		w.write("D=M")
+	case "pointer":
+		if index == 0 {
+			w.write("@THIS")
+		} else if index == 1 {
+			w.write("@THAT")
+		} else {
+			Die("Segmentation Fault: access over pointer segment: index=%d", index)
+		}
+		w.write("D=M")
+	case "temp":
+		// temp segment is R5 ~ R12
+		if index < 0 || 7 < index {
+			Die("Segmentation Fault: access over temp segment: index=%d", index)
+		}
+		w.write(fmt.Sprintf("@R%d", index+5))
+		w.write("D=M")
+	default:
+		Die("Unknown segment: %s", segment)
 	}
 
-	if typ == C_PUSH {
-		// M[SP] = D
-		w.write("@SP")
-		w.write("A=M")
+	// M[SP] = D
+	w.write("@SP")
+	w.write("A=M")
+	w.write("M=D")
+	// SP++
+	w.write("@SP")
+	w.write("M=M+1")
+}
+
+func (w *CodeWriter) writePop(segment string, index int) {
+	// SP--
+	w.write("@SP")
+	w.write("AM=M-1")
+	// D = M[SP]
+	w.write("D=M")
+	// R13 = D
+	w.write("@R13")
+	w.write("M=D")
+
+	// D and R13 hold poped value at this point.
+
+	switch segment {
+	case "argument":
+		w.write("@ARG")
+		w.write("D=M")
+		w.write(fmt.Sprintf("@%d", index))
+		w.write("D=D+A")
+	case "local":
+		w.write("@LCL")
+		w.write("D=M")
+		w.write(fmt.Sprintf("@%d", index))
+		w.write("D=D+A")
+	case "static":
+		w.write("@R15")
+		w.write("A=A+1")
+		w.write("D=A")
+		w.write(fmt.Sprintf("@%d", index))
+		w.write("D=D+A")
+	case "constant":
+		// We cannot save poped value into constant segment.
+		// So we discard it when typ is C_POP.
+		return
+	case "this":
+		w.write("@THIS")
+		w.write("D=M")
+		w.write(fmt.Sprintf("@%d", index))
+		w.write("D=D+A")
+	case "that":
+		w.write("@THAT")
+		w.write("D=M")
+		w.write(fmt.Sprintf("@%d", index))
+		w.write("D=D+A")
+	case "pointer":
+		if index == 0 {
+			w.write("@THIS")
+		} else if index == 1 {
+			w.write("@THAT")
+		} else {
+			Die("Segmentation Fault: access over pointer segment: index=%d", index)
+		}
 		w.write("M=D")
-		// SP++
-		w.write("@SP")
-		w.write("M=M+1")
+		return
+	case "temp":
+		// temp segment is R5 ~ R12
+		if index < 0 || 7 < index {
+			Die("Segmentation Fault: access over temp segment: index=%d", index)
+		}
+		w.write(fmt.Sprintf("@R%d", index+5))
+		w.write("M=D")
+		return
+	default:
+		Die("Unknown segment: %s", segment)
 	}
 
-	// push foo ->
-	// D=whatToPush
-	// @SP
-	// M=D
+	// D holds destination address at this point.
+	// First we save the address to R14.
+	w.write("@R14")
+	w.write("M=D")
+	// Then copy the value in R13 to where R14 points.
+	w.write("@R13")
+	w.write("D=M")
+	w.write("@R14")
+	w.write("A=M")
+	w.write("M=D")
+}
+
+func (w *CodeWriter) WritePushPop(typ CommandType, segment string, index int) {
+	switch typ {
+	case C_PUSH:
+		w.writePush(segment, index)
+	case C_POP:
+		w.writePop(segment, index)
+	default:
+		Die("Invalid command type for WritePushPop: %v", typ)
+	}
 }

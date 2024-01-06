@@ -75,7 +75,7 @@ func translateVM(vmPath string, w *CodeWriter) {
 		switch typ := p.CommandType(); typ {
 		case C_ARITHMETIC:
 			w.WriteArithmetic(p.Arg1())
-		case C_PUSH:
+		case C_PUSH, C_POP:
 			w.WritePushPop(typ, p.Arg1(), p.Arg2())
 		}
 	}
