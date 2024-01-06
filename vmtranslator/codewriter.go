@@ -30,15 +30,6 @@ func (w *CodeWriter) write(s string) {
 	io.WriteString(w.out, "\n")
 }
 
-// writePop write asm that means pop stack to D register
-func (w *CodeWriter) writePop() {
-	// SP--
-	w.write("@SP")
-	w.write("AM=M-1")
-	// D = M[SP]
-	w.write("D=M")
-}
-
 func (w *CodeWriter) WriteArithmetic(command string) {
 	// Comments assume following initial state.
 	//  stack
@@ -49,12 +40,16 @@ func (w *CodeWriter) WriteArithmetic(command string) {
 	// |     | <- SP
 	switch command {
 	case "add":
-		w.writePop()     // pop y
+		w.write("@SP") // pop y
+		w.write("AM=M-1")
+		w.write("D=M")
 		w.write("A=A-1") // point x
 		w.write("M=D+M") // x = y + x
 
 	case "sub":
-		w.writePop()     // pop y
+		w.write("@SP") // pop y
+		w.write("AM=M-1")
+		w.write("D=M")
 		w.write("A=A-1") // point x
 		w.write("M=M-D") // x = x - y
 
@@ -64,84 +59,85 @@ func (w *CodeWriter) WriteArithmetic(command string) {
 		w.write("M=-M")  // y = -y
 
 	case "eq":
-		w.writePop()     // pop y
+		w.write("@SP") // pop y
+		w.write("AM=M-1")
+		w.write("D=M")
 		w.write("A=A-1") // point x
 		w.write("D=M-D") // D = x - y
 
 		seq := w.seqGen.gen("SET_TRUE")
-		setTrueLabel := fmt.Sprintf("SET_TRUE$%d", seq)
 		endSetTrueLabel := fmt.Sprintf("END_SET_TRUE$%d", seq)
 
-		w.write(fmt.Sprintf("@%s", setTrueLabel))
-		w.write("D; JEQ")
-
+		// set false
 		w.write("@SP")
 		w.write("A=M-1") // point x
 		w.write("M=0")   // x = false
 		w.write(fmt.Sprintf("@%s", endSetTrueLabel))
-		w.write("0; JMP")
+		w.write("D; JNE")
 
-		w.write(fmt.Sprintf("(%s)", setTrueLabel))
+		// set true
 		w.write("@SP")
 		w.write("A=M-1") // point x
 		w.write("M=-1")  // x = true
 		w.write(fmt.Sprintf("(%s)", endSetTrueLabel))
 
 	case "gt":
-		w.writePop()     // pop y
+		w.write("@SP") // pop y
+		w.write("AM=M-1")
+		w.write("D=M")
 		w.write("A=A-1") // point x
 		w.write("D=M-D") // D = x - y
 
 		seq := w.seqGen.gen("SET_TRUE")
-		setTrueLabel := fmt.Sprintf("SET_TRUE$%d", seq)
 		endSetTrueLabel := fmt.Sprintf("END_SET_TRUE$%d", seq)
 
-		w.write(fmt.Sprintf("@%s", setTrueLabel))
-		w.write("D; JGT")
-
+		// set false
 		w.write("@SP")
 		w.write("A=M-1") // point x
 		w.write("M=0")   // x = false
 		w.write(fmt.Sprintf("@%s", endSetTrueLabel))
-		w.write("0; JMP")
+		w.write("D; JLE")
 
-		w.write(fmt.Sprintf("(%s)", setTrueLabel))
+		// set true
 		w.write("@SP")
 		w.write("A=M-1") // point x
 		w.write("M=-1")  // x = true
 		w.write(fmt.Sprintf("(%s)", endSetTrueLabel))
 
 	case "lt":
-		w.writePop()     // pop y
+		w.write("@SP") // pop y
+		w.write("AM=M-1")
+		w.write("D=M")
 		w.write("A=A-1") // point x
 		w.write("D=M-D") // D = x - y
 
 		seq := w.seqGen.gen("SET_TRUE")
-		setTrueLabel := fmt.Sprintf("SET_TRUE$%d", seq)
 		endSetTrueLabel := fmt.Sprintf("END_SET_TRUE$%d", seq)
 
-		w.write(fmt.Sprintf("@%s", setTrueLabel))
-		w.write("D; JLT")
-
+		// set false
 		w.write("@SP")
 		w.write("A=M-1") // point x
 		w.write("M=0")   // x = false
 		w.write(fmt.Sprintf("@%s", endSetTrueLabel))
-		w.write("0; JMP")
+		w.write("D; JGE")
 
-		w.write(fmt.Sprintf("(%s)", setTrueLabel))
+		// set true
 		w.write("@SP")
 		w.write("A=M-1") // point x
 		w.write("M=-1")  // x = true
 		w.write(fmt.Sprintf("(%s)", endSetTrueLabel))
 
 	case "and":
-		w.writePop()     // pop y
+		w.write("@SP") // pop y
+		w.write("AM=M-1")
+		w.write("D=M")
 		w.write("A=A-1") // point x
 		w.write("M=D&M") // x = y & x
 
 	case "or":
-		w.writePop()     // pop y
+		w.write("@SP") // pop y
+		w.write("AM=M-1")
+		w.write("D=M")
 		w.write("A=A-1") // point x
 		w.write("M=D|M") // x = y | x
 

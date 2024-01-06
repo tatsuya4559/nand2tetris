@@ -17,14 +17,11 @@ AM=M-1
 D=M
 A=A-1
 D=M-D
-@SET_TRUE$0
-D; JEQ
 @SP
 A=M-1
 M=0
 @END_SET_TRUE$0
-0; JMP
-(SET_TRUE$0)
+D; JNE
 @SP
 A=M-1
 M=-1
@@ -48,14 +45,11 @@ AM=M-1
 D=M
 A=A-1
 D=M-D
-@SET_TRUE$1
-D; JEQ
 @SP
 A=M-1
 M=0
 @END_SET_TRUE$1
-0; JMP
-(SET_TRUE$1)
+D; JNE
 @SP
 A=M-1
 M=-1
@@ -79,14 +73,11 @@ AM=M-1
 D=M
 A=A-1
 D=M-D
-@SET_TRUE$2
-D; JEQ
 @SP
 A=M-1
 M=0
 @END_SET_TRUE$2
-0; JMP
-(SET_TRUE$2)
+D; JNE
 @SP
 A=M-1
 M=-1
@@ -110,14 +101,11 @@ AM=M-1
 D=M
 A=A-1
 D=M-D
-@SET_TRUE$3
-D; JLT
 @SP
 A=M-1
 M=0
 @END_SET_TRUE$3
-0; JMP
-(SET_TRUE$3)
+D; JGE
 @SP
 A=M-1
 M=-1
@@ -141,14 +129,11 @@ AM=M-1
 D=M
 A=A-1
 D=M-D
-@SET_TRUE$4
-D; JLT
 @SP
 A=M-1
 M=0
 @END_SET_TRUE$4
-0; JMP
-(SET_TRUE$4)
+D; JGE
 @SP
 A=M-1
 M=-1
@@ -172,14 +157,11 @@ AM=M-1
 D=M
 A=A-1
 D=M-D
-@SET_TRUE$5
-D; JLT
 @SP
 A=M-1
 M=0
 @END_SET_TRUE$5
-0; JMP
-(SET_TRUE$5)
+D; JGE
 @SP
 A=M-1
 M=-1
@@ -203,14 +185,11 @@ AM=M-1
 D=M
 A=A-1
 D=M-D
-@SET_TRUE$6
-D; JGT
 @SP
 A=M-1
 M=0
 @END_SET_TRUE$6
-0; JMP
-(SET_TRUE$6)
+D; JLE
 @SP
 A=M-1
 M=-1
@@ -234,14 +213,11 @@ AM=M-1
 D=M
 A=A-1
 D=M-D
-@SET_TRUE$7
-D; JGT
 @SP
 A=M-1
 M=0
 @END_SET_TRUE$7
-0; JMP
-(SET_TRUE$7)
+D; JLE
 @SP
 A=M-1
 M=-1
@@ -265,14 +241,11 @@ AM=M-1
 D=M
 A=A-1
 D=M-D
-@SET_TRUE$8
-D; JGT
 @SP
 A=M-1
 M=0
 @END_SET_TRUE$8
-0; JMP
-(SET_TRUE$8)
+D; JLE
 @SP
 A=M-1
 M=-1
