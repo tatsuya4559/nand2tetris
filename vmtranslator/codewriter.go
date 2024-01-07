@@ -32,7 +32,7 @@ func (w *CodeWriter) write(s string) {
 
 func (w *CodeWriter) genSequencialLabel(prefix string) string {
 	seq := w.seqGen.gen(prefix)
-	return fmt.Sprintf("%s$%d", prefix, seq)
+	return fmt.Sprintf("%s_%d", prefix, seq)
 }
 
 func (w *CodeWriter) WriteArithmetic(command string) {
