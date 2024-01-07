@@ -21,7 +21,7 @@ D=M-D
 A=M-1
 M=0
 @END_SET_TRUE_0
-D; JNE
+D;JNE
 @SP
 A=M-1
 M=-1
@@ -49,7 +49,7 @@ D=M-D
 A=M-1
 M=0
 @END_SET_TRUE_1
-D; JNE
+D;JNE
 @SP
 A=M-1
 M=-1
@@ -77,7 +77,7 @@ D=M-D
 A=M-1
 M=0
 @END_SET_TRUE_2
-D; JNE
+D;JNE
 @SP
 A=M-1
 M=-1
@@ -105,7 +105,7 @@ D=M-D
 A=M-1
 M=0
 @END_SET_TRUE_3
-D; JGE
+D;JGE
 @SP
 A=M-1
 M=-1
@@ -133,7 +133,7 @@ D=M-D
 A=M-1
 M=0
 @END_SET_TRUE_4
-D; JGE
+D;JGE
 @SP
 A=M-1
 M=-1
@@ -161,7 +161,7 @@ D=M-D
 A=M-1
 M=0
 @END_SET_TRUE_5
-D; JGE
+D;JGE
 @SP
 A=M-1
 M=-1
@@ -189,7 +189,7 @@ D=M-D
 A=M-1
 M=0
 @END_SET_TRUE_6
-D; JLE
+D;JLE
 @SP
 A=M-1
 M=-1
@@ -217,7 +217,7 @@ D=M-D
 A=M-1
 M=0
 @END_SET_TRUE_7
-D; JLE
+D;JLE
 @SP
 A=M-1
 M=-1
@@ -245,7 +245,7 @@ D=M-D
 A=M-1
 M=0
 @END_SET_TRUE_8
-D; JLE
+D;JLE
 @SP
 A=M-1
 M=-1

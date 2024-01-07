@@ -69,6 +69,8 @@ func translateVM(vmPath string, w *CodeWriter) {
 	}
 	defer in.Close()
 
+	w.SetFilename(filepath.Base(vmPath))
+
 	p := NewParser(in)
 	for p.HasMoreCommands() {
 		p.Advance()
@@ -77,6 +79,12 @@ func translateVM(vmPath string, w *CodeWriter) {
 			w.WriteArithmetic(p.Arg1())
 		case C_PUSH, C_POP:
 			w.WritePushPop(typ, p.Arg1(), p.Arg2())
+		case C_LABEL:
+			w.WriteLabel(p.Arg1())
+		case C_GOTO:
+			w.WriteGoto(p.Arg1())
+		case C_IF:
+			w.WriteIf(p.Arg1())
 		}
 	}
 }

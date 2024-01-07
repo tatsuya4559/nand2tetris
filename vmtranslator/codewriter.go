@@ -14,8 +14,9 @@ func (s sequenceGenerator) gen(key string) int {
 }
 
 type CodeWriter struct {
-	out    io.Writer
-	seqGen sequenceGenerator
+	out      io.Writer
+	seqGen   sequenceGenerator
+	filename string
 }
 
 func NewCodeWriter(out io.Writer) *CodeWriter {
@@ -23,6 +24,10 @@ func NewCodeWriter(out io.Writer) *CodeWriter {
 		out:    out,
 		seqGen: make(sequenceGenerator),
 	}
+}
+
+func (w *CodeWriter) SetFilename(filename string) {
+	w.filename = filename
 }
 
 func (w *CodeWriter) write(s string) {
@@ -77,7 +82,7 @@ func (w *CodeWriter) WriteArithmetic(command string) {
 		w.write("A=M-1") // point x
 		w.write("M=0")   // x = false
 		w.write(fmt.Sprintf("@%s", endSetTrueLabel))
-		w.write("D; JNE")
+		w.write("D;JNE")
 
 		// set true
 		w.write("@SP")
@@ -99,7 +104,7 @@ func (w *CodeWriter) WriteArithmetic(command string) {
 		w.write("A=M-1") // point x
 		w.write("M=0")   // x = false
 		w.write(fmt.Sprintf("@%s", endSetTrueLabel))
-		w.write("D; JLE")
+		w.write("D;JLE")
 
 		// set true
 		w.write("@SP")
@@ -121,7 +126,7 @@ func (w *CodeWriter) WriteArithmetic(command string) {
 		w.write("A=M-1") // point x
 		w.write("M=0")   // x = false
 		w.write(fmt.Sprintf("@%s", endSetTrueLabel))
-		w.write("D; JGE")
+		w.write("D;JGE")
 
 		// set true
 		w.write("@SP")
@@ -301,4 +306,27 @@ func (w *CodeWriter) WritePushPop(typ CommandType, segment string, index int) {
 	default:
 		Die("Invalid command type for WritePushPop: %v", typ)
 	}
+}
+
+func (w *CodeWriter) WriteLabel(label string) {
+	// TODO: (function$label) の形式にする
+	// 現在の関数名がわからないといけない
+	w.write(fmt.Sprintf("(%s)", label))
+}
+
+func (w *CodeWriter) WriteGoto(label string) {
+	// TODO: (function$label) の形式にする
+	w.write(fmt.Sprintf("@%s", label))
+	w.write("0;JMP")
+}
+
+func (w *CodeWriter) WriteIf(label string) {
+	// pop
+	w.write("@SP")
+	w.write("AM=M-1")
+	w.write("D=M")
+
+	// TODO: (function$label) の形式にする
+	w.write(fmt.Sprintf("@%s", label))
+	w.write("D;JNE")
 }
