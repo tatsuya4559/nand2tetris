@@ -42,6 +42,8 @@ func (w *CodeWriter) genSequencialLabel(prefix string) string {
 }
 
 func (w *CodeWriter) WriteArithmetic(command string) {
+	w.write(fmt.Sprintf("// %s", command))
+
 	// Comments assume following initial state.
 	//  stack
 	// +-----+
@@ -154,9 +156,13 @@ func (w *CodeWriter) WriteArithmetic(command string) {
 		w.write("A=M-1") // point y
 		w.write("M=!M")  // y = !y
 	}
+
+	w.write("")
 }
 
 func (w *CodeWriter) writePush(segment string, index int) {
+	w.write(fmt.Sprintf("// push %s %d", segment, index))
+
 	switch segment {
 	case "argument":
 		w.write("@ARG")
@@ -213,6 +219,8 @@ func (w *CodeWriter) writePush(segment string, index int) {
 	}
 
 	w.writePushD()
+
+	w.write("")
 }
 
 // writePushD writes asm which means push D-Register.
@@ -227,6 +235,8 @@ func (w *CodeWriter) writePushD() {
 }
 
 func (w *CodeWriter) writePop(segment string, index int) {
+	w.write(fmt.Sprintf("// pop %s %d", segment, index))
+
 	// SP--
 	w.write("@SP")
 	w.write("AM=M-1")
@@ -258,7 +268,7 @@ func (w *CodeWriter) writePop(segment string, index int) {
 	case "constant":
 		// We cannot save poped value into constant segment.
 		// So we discard it when typ is C_POP.
-		return
+		goto END
 	case "this":
 		w.write("@THIS")
 		w.write("D=M")
@@ -278,7 +288,7 @@ func (w *CodeWriter) writePop(segment string, index int) {
 			Die("Segmentation Fault: access over pointer segment: index=%d", index)
 		}
 		w.write("M=D")
-		return
+		goto END
 	case "temp":
 		// temp segment is R5 ~ R12
 		if index < 0 || 7 < index {
@@ -286,7 +296,7 @@ func (w *CodeWriter) writePop(segment string, index int) {
 		}
 		w.write(fmt.Sprintf("@R%d", index+5))
 		w.write("M=D")
-		return
+		goto END
 	default:
 		Die("Unknown segment: %s", segment)
 	}
@@ -301,6 +311,9 @@ func (w *CodeWriter) writePop(segment string, index int) {
 	w.write("@R14")
 	w.write("A=M")
 	w.write("M=D")
+
+END:
+	w.write("")
 }
 
 func (w *CodeWriter) WritePushPop(typ CommandType, segment string, index int) {
@@ -320,15 +333,20 @@ func (w *CodeWriter) qualifyLabel(label string) string {
 }
 
 func (w *CodeWriter) WriteLabel(label string) {
+	w.write(fmt.Sprintf("// label %s", label))
 	w.write(fmt.Sprintf("(%s)", w.qualifyLabel(label)))
+	w.write("")
 }
 
 func (w *CodeWriter) WriteGoto(label string) {
+	w.write(fmt.Sprintf("// goto %s", label))
 	w.write(fmt.Sprintf("@%s", w.qualifyLabel(label)))
 	w.write("0;JMP")
+	w.write("")
 }
 
 func (w *CodeWriter) WriteIf(label string) {
+	w.write(fmt.Sprintf("// if-goto %s", label))
 	// pop
 	w.write("@SP")
 	w.write("AM=M-1")
@@ -336,9 +354,13 @@ func (w *CodeWriter) WriteIf(label string) {
 
 	w.write(fmt.Sprintf("@%s", w.qualifyLabel(label)))
 	w.write("D;JNE")
+
+	w.write("")
 }
 
 func (w *CodeWriter) WriteCall(funcName string, nArgs int) {
+	w.write(fmt.Sprintf("// call %s %d", funcName, nArgs))
+
 	// Push return address
 	returnAddressLabel := w.genSequencialLabel("RETURN_ADDR")
 	w.write(fmt.Sprintf("@%s", returnAddressLabel))
@@ -371,22 +393,29 @@ func (w *CodeWriter) WriteCall(funcName string, nArgs int) {
 	w.write("0;JMP")
 
 	// Set return address label
-	w.write(fmt.Sprintf("(%s)", returnAddressLabel))
+	w.write(fmt.Sprintf("(%s) // back from %s to %s", returnAddressLabel, funcName, w.currentFunction))
+
+	w.write("")
 }
 
 func (w *CodeWriter) WriteFunction(funcName string, nLocals int) {
 	w.currentFunction = funcName
 
-	w.write(fmt.Sprintf("(%s)", funcName))
+	w.write(fmt.Sprintf("// function %s %d", funcName, nLocals))
+	w.write(fmt.Sprintf("(%s) // {", funcName))
 
 	// Initialize local variables
 	w.write("D=0")
 	for i := 0; i < nLocals; i++ {
 		w.writePushD()
 	}
+
+	w.write("")
 }
 
 func (w *CodeWriter) WriteReturn() {
+	w.write(fmt.Sprintf("// return (from %s)", w.currentFunction))
+
 	// Use R15 for saving return address.
 	// We need to get return address first because
 	// when nargs == 0, return address will be lost
@@ -421,6 +450,9 @@ func (w *CodeWriter) WriteReturn() {
 	w.write("@R15")
 	w.write("A=M")
 	w.write("0;JMP")
+
+	w.write("// }")
+	w.write("")
 }
 
 func (w *CodeWriter) WriteInit() {
@@ -431,5 +463,6 @@ func (w *CodeWriter) WriteInit() {
 	w.write("M=D")
 
 	// Jump to Sys.init
+	w.currentFunction = "Sys.init"
 	w.WriteCall("Sys.init", 0)
 }
