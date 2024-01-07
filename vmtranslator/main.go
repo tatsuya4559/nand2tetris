@@ -19,11 +19,11 @@ func main() {
 	var asmFilename string
 
 	if info.IsDir() {
-		abspath, err := filepath.Abs(info.Name())
+		abspath, err := filepath.Abs(path)
 		if err != nil {
 			Die("cannot get absolute path for %s", info.Name())
 		}
-		asmFilename = filepath.Base(abspath) + ".asm"
+		asmFilename = filepath.Join(path, filepath.Base(abspath)+".asm")
 
 		entries, err := os.ReadDir(path)
 		if err != nil {
@@ -32,17 +32,18 @@ func main() {
 
 		out, err := os.Create(asmFilename)
 		if err != nil {
-			panic(err)
+			Die("cannot create %s: %v", asmFilename, err)
 		}
 		codeWriter := NewCodeWriter(out)
 		defer out.Close()
 
+		// codeWriter.WriteInit()
 		for _, e := range entries {
 			name := e.Name()
 			if filepath.Ext(name) != ".vm" {
 				continue
 			}
-			translateVM(name, codeWriter)
+			translateVM(filepath.Join(abspath, name), codeWriter)
 		}
 	} else {
 		ext := filepath.Ext(path)
@@ -53,11 +54,12 @@ func main() {
 
 		out, err := os.Create(asmFilename)
 		if err != nil {
-			panic(err)
+			Die("cannot create %s: %v", asmFilename, err)
 		}
 		codeWriter := NewCodeWriter(out)
 		defer out.Close()
 
+		// codeWriter.WriteInit()
 		translateVM(path, codeWriter)
 	}
 }
@@ -85,6 +87,12 @@ func translateVM(vmPath string, w *CodeWriter) {
 			w.WriteGoto(p.Arg1())
 		case C_IF:
 			w.WriteIf(p.Arg1())
+		case C_CALL:
+			w.WriteCall(p.Arg1(), p.Arg2())
+		case C_FUNCTION:
+			w.WriteFunction(p.Arg1(), p.Arg2())
+		case C_RETURN:
+			w.WriteReturn()
 		}
 	}
 }

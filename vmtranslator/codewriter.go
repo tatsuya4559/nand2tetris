@@ -14,9 +14,10 @@ func (s sequenceGenerator) gen(key string) int {
 }
 
 type CodeWriter struct {
-	out      io.Writer
-	seqGen   sequenceGenerator
-	filename string
+	out             io.Writer
+	seqGen          sequenceGenerator
+	currentFile     string
+	currentFunction string
 }
 
 func NewCodeWriter(out io.Writer) *CodeWriter {
@@ -27,7 +28,7 @@ func NewCodeWriter(out io.Writer) *CodeWriter {
 }
 
 func (w *CodeWriter) SetFilename(filename string) {
-	w.filename = filename
+	w.currentFile = filename
 }
 
 func (w *CodeWriter) write(s string) {
@@ -211,6 +212,11 @@ func (w *CodeWriter) writePush(segment string, index int) {
 		Die("Unknown segment: %s", segment)
 	}
 
+	w.writePushD()
+}
+
+// writePushD writes asm which means push D-Register.
+func (w *CodeWriter) writePushD() {
 	// M[SP] = D
 	w.write("@SP")
 	w.write("A=M")
@@ -308,15 +314,17 @@ func (w *CodeWriter) WritePushPop(typ CommandType, segment string, index int) {
 	}
 }
 
+// qualifyLabel makes label identified in asm file.
+func (w *CodeWriter) qualifyLabel(label string) string {
+	return fmt.Sprintf("%s.%s$%s", w.currentFile, w.currentFunction, label)
+}
+
 func (w *CodeWriter) WriteLabel(label string) {
-	// TODO: (function$label) の形式にする
-	// 現在の関数名がわからないといけない
-	w.write(fmt.Sprintf("(%s)", label))
+	w.write(fmt.Sprintf("(%s)", w.qualifyLabel(label)))
 }
 
 func (w *CodeWriter) WriteGoto(label string) {
-	// TODO: (function$label) の形式にする
-	w.write(fmt.Sprintf("@%s", label))
+	w.write(fmt.Sprintf("@%s", w.qualifyLabel(label)))
 	w.write("0;JMP")
 }
 
@@ -326,7 +334,98 @@ func (w *CodeWriter) WriteIf(label string) {
 	w.write("AM=M-1")
 	w.write("D=M")
 
-	// TODO: (function$label) の形式にする
-	w.write(fmt.Sprintf("@%s", label))
+	w.write(fmt.Sprintf("@%s", w.qualifyLabel(label)))
 	w.write("D;JNE")
+}
+
+func (w *CodeWriter) WriteCall(funcName string, nArgs int) {
+	// Push return address
+	returnAddressLabel := w.genSequencialLabel("RETURN_ADDR")
+	w.write(fmt.Sprintf("@%s", returnAddressLabel))
+	w.write("D=A")
+	w.writePushD()
+
+	// Push LCL, ARG, THIS, THAT
+	for _, label := range []string{"LCL", "ARG", "THIS", "THAT"} {
+		w.write(fmt.Sprintf("@%s", label))
+		w.write("D=A")
+		w.writePushD()
+	}
+
+	// Set ARG to SP - nArgs - 5(return-address, LCL, ARG, THIS, THAT)
+	w.write(fmt.Sprintf("@%d", nArgs+5))
+	w.write("D=A")
+	w.write("@SP")
+	w.write("D=A-D")
+	w.write("@ARG")
+	w.write("M=D")
+
+	// Set LCL to SP
+	w.write("@SP")
+	w.write("D=A")
+	w.write("@LCL")
+	w.write("M=D")
+
+	// Goto function
+	// TODO: qualify funcname
+	w.write(fmt.Sprintf("@%s", funcName))
+	w.write("0;JMP")
+
+	// Set return address label
+	w.write(fmt.Sprintf("(%s)", returnAddressLabel))
+}
+
+func (w *CodeWriter) WriteFunction(funcName string, nLocals int) {
+	w.write(fmt.Sprintf("@%s", funcName))
+
+	// Initialize local variables
+	w.write("D=0")
+	for i := 0; i < nLocals; i++ {
+		w.writePushD()
+	}
+}
+
+func (w *CodeWriter) WriteReturn() {
+	// Set return value
+	w.writePop("argument", 0)
+	w.write("@ARG")
+	w.write("D=M")
+	w.write("@SP")
+	w.write("M=D+1")
+
+	// Use R15 for saving return address.
+	w.write("@5")
+	w.write("D=A")
+	w.write("@LCL")
+	w.write("A=M-D")
+	w.write("D=M")
+	w.write("@R15")
+	w.write("M=D")
+
+	// Recover LCL, ARG, THIS, THAT
+	for i, label := range []string{"THAT", "THIS", "ARG", "LCL"} {
+		w.write(fmt.Sprintf("@%d", i+1))
+		w.write("D=A")
+		w.write("@LCL")
+		w.write("A=M-D")
+		w.write("D=M")
+		w.write(fmt.Sprintf("@%s", label))
+		w.write("M=D")
+	}
+
+	// Goto return address.
+	w.write("@R15")
+	w.write("A=M")
+	w.write("0;JMP")
+}
+
+func (w *CodeWriter) WriteInit() {
+	// Set SP to RAM[256]
+	w.write("@256")
+	w.write("D=A")
+	w.write("@SP")
+	w.write("M=D")
+
+	// Jump to Sys.init
+	w.WriteCall("Sys.init", 0)
 }
