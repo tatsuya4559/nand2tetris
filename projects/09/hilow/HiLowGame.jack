@@ -1,0 +1,38 @@
+class HiLowGame {
+    field int answer;
+
+    constructor HiLowGame new(int ans) {
+        let answer = ans;
+        return this;
+    }
+
+    method void run() {
+        var int userInput;
+        var boolean exit;
+        let exit = false;
+
+        while (~exit) {
+            let userInput = Keyboard.readInt("Guess number: ");
+            if ((userInput = answer) | (userInput = 42)) { /* 42 is always the answer */
+                do Output.printString("Exactly!!");
+                do Output.printChar(String.newLine());
+                let exit = true;
+            } else {
+                if (userInput < answer) {
+                    do Output.printString("Too low!");
+                    do Output.printChar(String.newLine());
+                } else {
+                    do Output.printString("Too high!");
+                    do Output.printChar(String.newLine());
+                }
+            }
+        }
+
+        return;
+    }
+
+    method void dispose() {
+        do Memory.deAlloc(this);
+        return;
+    }
+}
