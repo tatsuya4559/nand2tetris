@@ -177,11 +177,7 @@ func (w *CodeWriter) writePush(segment string, index int) {
 		w.write("A=D+A")
 		w.write("D=M")
 	case "static":
-		w.write("@R15")
-		w.write("A=A+1")
-		w.write("D=A")
-		w.write(fmt.Sprintf("@%d", index))
-		w.write("A=D+A")
+		w.write(fmt.Sprintf("@%s.static_%d", w.currentFile, index))
 		w.write("D=M")
 	case "constant":
 		w.write(fmt.Sprintf("@%d", index))
@@ -260,11 +256,8 @@ func (w *CodeWriter) writePop(segment string, index int) {
 		w.write(fmt.Sprintf("@%d", index))
 		w.write("D=D+A")
 	case "static":
-		w.write("@R15")
-		w.write("A=A+1")
+		w.write(fmt.Sprintf("@%s.static_%d", w.currentFile, index))
 		w.write("D=A")
-		w.write(fmt.Sprintf("@%d", index))
-		w.write("D=D+A")
 	case "constant":
 		// We cannot save poped value into constant segment.
 		// So we discard it when typ is C_POP.
