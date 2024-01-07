@@ -348,7 +348,7 @@ func (w *CodeWriter) WriteCall(funcName string, nArgs int) {
 	// Push LCL, ARG, THIS, THAT
 	for _, label := range []string{"LCL", "ARG", "THIS", "THAT"} {
 		w.write(fmt.Sprintf("@%s", label))
-		w.write("D=A")
+		w.write("D=M")
 		w.writePushD()
 	}
 
@@ -356,18 +356,17 @@ func (w *CodeWriter) WriteCall(funcName string, nArgs int) {
 	w.write(fmt.Sprintf("@%d", nArgs+5))
 	w.write("D=A")
 	w.write("@SP")
-	w.write("D=A-D")
+	w.write("D=M-D")
 	w.write("@ARG")
 	w.write("M=D")
 
 	// Set LCL to SP
 	w.write("@SP")
-	w.write("D=A")
+	w.write("D=M")
 	w.write("@LCL")
 	w.write("M=D")
 
 	// Goto function
-	// TODO: qualify funcname
 	w.write(fmt.Sprintf("@%s", funcName))
 	w.write("0;JMP")
 
@@ -376,7 +375,9 @@ func (w *CodeWriter) WriteCall(funcName string, nArgs int) {
 }
 
 func (w *CodeWriter) WriteFunction(funcName string, nLocals int) {
-	w.write(fmt.Sprintf("@%s", funcName))
+	w.currentFunction = funcName
+
+	w.write(fmt.Sprintf("(%s)", funcName))
 
 	// Initialize local variables
 	w.write("D=0")
@@ -386,14 +387,10 @@ func (w *CodeWriter) WriteFunction(funcName string, nLocals int) {
 }
 
 func (w *CodeWriter) WriteReturn() {
-	// Set return value
-	w.writePop("argument", 0)
-	w.write("@ARG")
-	w.write("D=M")
-	w.write("@SP")
-	w.write("M=D+1")
-
 	// Use R15 for saving return address.
+	// We need to get return address first because
+	// when nargs == 0, return address will be lost
+	// by *ARG = pop() operation.
 	w.write("@5")
 	w.write("D=A")
 	w.write("@LCL")
@@ -401,6 +398,13 @@ func (w *CodeWriter) WriteReturn() {
 	w.write("D=M")
 	w.write("@R15")
 	w.write("M=D")
+
+	// Set return value
+	w.writePop("argument", 0)
+	w.write("@ARG")
+	w.write("D=M")
+	w.write("@SP")
+	w.write("M=D+1")
 
 	// Recover LCL, ARG, THIS, THAT
 	for i, label := range []string{"THAT", "THIS", "ARG", "LCL"} {

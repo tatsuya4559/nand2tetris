@@ -1,4 +1,4 @@
-@SimpleFunction.test
+(SimpleFunction.test)
 D=0
 @SP
 A=M

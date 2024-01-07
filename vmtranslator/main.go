@@ -37,7 +37,7 @@ func main() {
 		codeWriter := NewCodeWriter(out)
 		defer out.Close()
 
-		// codeWriter.WriteInit()
+		codeWriter.WriteInit()
 		for _, e := range entries {
 			name := e.Name()
 			if filepath.Ext(name) != ".vm" {
@@ -59,7 +59,7 @@ func main() {
 		codeWriter := NewCodeWriter(out)
 		defer out.Close()
 
-		// codeWriter.WriteInit()
+		codeWriter.WriteInit()
 		translateVM(path, codeWriter)
 	}
 }
