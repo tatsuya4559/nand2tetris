@@ -99,9 +99,25 @@ func (t *Tokenizer) skipWhiteSpaces() {
 	}
 }
 
+func (t *Tokenizer) skipLineComment() {
+	for t.ch != '\n' {
+		t.readRune()
+	}
+	t.readRune() // consume \n
+}
+
+func (t *Tokenizer) skipBlockComment() {
+	for !(t.src[t.offset] == '*' && t.src[t.rdOffset] == '/') {
+		t.readRune()
+	}
+	t.readRune() // consume *
+	t.readRune() // consume /
+}
+
 func (t *Tokenizer) NextToken() Token {
 	var tok Token
 
+BEGIN:
 	t.skipWhiteSpaces()
 
 	switch t.ch {
@@ -157,9 +173,17 @@ func (t *Tokenizer) NextToken() Token {
 		tok.Literal = string(t.ch)
 		t.readRune() // consume symbol
 	case '/':
-		tok.Kind = TokenSlash
-		tok.Literal = string(t.ch)
 		t.readRune() // consume symbol
+		if t.ch == '/' {
+			t.skipLineComment()
+			goto BEGIN // avoid recursive call
+		} else if t.ch == '*' {
+			t.skipBlockComment()
+			goto BEGIN // avoid recursive call
+		} else {
+			tok.Kind = TokenSlash
+			tok.Literal = "/"
+		}
 	case '&':
 		tok.Kind = TokenAmpersand
 		tok.Literal = string(t.ch)
