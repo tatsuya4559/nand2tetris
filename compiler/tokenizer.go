@@ -107,9 +107,81 @@ func (t *Tokenizer) NextToken() Token {
 	switch t.ch {
 	case eof:
 		tok.Kind = TokenEOF
-	case '{', '}', '(', ')', '[', ']', '.', ',', ';',
-		'+', '-', '*', '/', '&', '|', '<', '>', '=', '~':
-		tok.Kind = TokenSymbol
+	case '{':
+		tok.Kind = TokenLBrace
+		tok.Literal = string(t.ch)
+		t.readRune() // consume symbol
+	case '}':
+		tok.Kind = TokenRBrace
+		tok.Literal = string(t.ch)
+		t.readRune() // consume symbol
+	case '(':
+		tok.Kind = TokenLParen
+		tok.Literal = string(t.ch)
+		t.readRune() // consume symbol
+	case ')':
+		tok.Kind = TokenRParen
+		tok.Literal = string(t.ch)
+		t.readRune() // consume symbol
+	case '[':
+		tok.Kind = TokenLBracket
+		tok.Literal = string(t.ch)
+		t.readRune() // consume symbol
+	case ']':
+		tok.Kind = TokenRBracket
+		tok.Literal = string(t.ch)
+		t.readRune() // consume symbol
+	case '.':
+		tok.Kind = TokenDot
+		tok.Literal = string(t.ch)
+		t.readRune() // consume symbol
+	case ',':
+		tok.Kind = TokenComma
+		tok.Literal = string(t.ch)
+		t.readRune() // consume symbol
+	case ';':
+		tok.Kind = TokenSemicolon
+		tok.Literal = string(t.ch)
+		t.readRune() // consume symbol
+	case '+':
+		tok.Kind = TokenPlus
+		tok.Literal = string(t.ch)
+		t.readRune() // consume symbol
+	case '-':
+		tok.Kind = TokenMinus
+		tok.Literal = string(t.ch)
+		tok.Literal = string(t.ch)
+		t.readRune() // consume symbol
+	case '*':
+		tok.Kind = TokenAsterisk
+		tok.Literal = string(t.ch)
+		t.readRune() // consume symbol
+	case '/':
+		tok.Kind = TokenSlash
+		tok.Literal = string(t.ch)
+		t.readRune() // consume symbol
+	case '&':
+		tok.Kind = TokenAmpersand
+		tok.Literal = string(t.ch)
+		t.readRune() // consume symbol
+	case '|':
+		tok.Kind = TokenVerticalLine
+		tok.Literal = string(t.ch)
+		t.readRune() // consume symbol
+	case '<':
+		tok.Kind = TokenLT
+		tok.Literal = string(t.ch)
+		t.readRune() // consume symbol
+	case '>':
+		tok.Kind = TokenGT
+		tok.Literal = string(t.ch)
+		t.readRune() // consume symbol
+	case '=':
+		tok.Kind = TokenEqual
+		tok.Literal = string(t.ch)
+		t.readRune() // consume symbol
+	case '~':
+		tok.Kind = TokenTilda
 		tok.Literal = string(t.ch)
 		t.readRune() // consume symbol
 	case '"':
@@ -117,18 +189,21 @@ func (t *Tokenizer) NextToken() Token {
 		tok.Literal = t.readString()
 	default:
 		if isDigit(t.ch) {
-			tok.Kind = TokenInt
+			tok.Kind = TokenNumber
 			tok.Literal = t.readInt()
-		}
-		ident := t.readIdentifier()
-		if IsKeyword(ident) {
-			tok.Kind = TokenKeyword
+		} else if isLetter(t.ch) {
+			ident := t.readIdentifier()
+			tok.Kind = LookupKeyword(ident)
 			tok.Literal = ident
 		} else {
-			tok.Kind = TokenIdentifier
-			tok.Literal = ident
+			Die("Illegal token found on line %d: %q", t.CurrentLineNum(), t.ch)
 		}
+
 	}
 
 	return tok
+}
+
+func (t *Tokenizer) CurrentLineNum() int {
+	return t.lineNum
 }

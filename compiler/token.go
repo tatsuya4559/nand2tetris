@@ -4,11 +4,66 @@ type TokenKind int
 
 const (
 	TokenEOF TokenKind = iota
-	TokenKeyword
-	TokenSymbol
+
 	TokenIdentifier
-	TokenInt
+	TokenNumber
 	TokenString
+
+	/*** symbols ***/
+	TokenLBrace
+	TokenRBrace
+
+	TokenLParen
+	TokenRParen
+
+	TokenLBracket
+	TokenRBracket
+
+	TokenDot
+	TokenComma
+
+	TokenSemicolon
+
+	TokenPlus
+	TokenMinus
+	TokenAsterisk
+	TokenSlash
+
+	TokenAmpersand
+	TokenVerticalLine
+	TokenTilda
+
+	TokenLT
+	TokenGT
+	TokenEqual
+
+	/*** keywords ***/
+	TokenClass
+	TokenThis
+
+	TokenMethod
+	TokenFunction
+	TokenConstructor
+
+	TokenInt
+	TokenBoolean
+	TokenChar
+	TokenVoid
+
+	TokenVar
+	TokenStatic
+	TokenField
+
+	TokenLet
+	TokenDo
+	TokenIf
+	TokenElse
+	TokenWhile
+	TokenReturn
+
+	TokenTrue
+	TokenFalse
+	TokenNull
 )
 
 type Token struct {
@@ -16,73 +71,34 @@ type Token struct {
 	Literal string
 }
 
-type Keyword int
-
-const (
-	// class
-	KwClass Keyword = iota
-	KwThis
-
-	// subroutine
-	KwMethod
-	KwFunction
-	KwConstructor
-
-	// type
-	KwInt
-	KwBoolean
-	KwChar
-	KwVoid
-
-	// variable
-	KwVar
-	KwStatic
-	KwField
-
-	// statement
-	KwLet
-	KwDo
-	KwIf
-	KwElse
-	KwWhile
-	KwReturn
-
-	// constant
-	KwTrue
-	KwFalse
-	KwNull
-)
-
-var keywords = map[string]Keyword{
-	"class":       KwClass,
-	"this":        KwThis,
-	"method":      KwMethod,
-	"function":    KwFunction,
-	"constractor": KwConstructor,
-	"int":         KwInt,
-	"boolean":     KwBoolean,
-	"char":        KwChar,
-	"void":        KwVoid,
-	"var":         KwVar,
-	"static":      KwStatic,
-	"field":       KwField,
-	"let":         KwLet,
-	"do":          KwDo,
-	"if":          KwIf,
-	"else":        KwElse,
-	"while":       KwWhile,
-	"return":      KwReturn,
-	"true":        KwTrue,
-	"false":       KwFalse,
-	"null":        KwNull,
+var keywords = map[string]TokenKind{
+	"class":       TokenClass,
+	"this":        TokenThis,
+	"method":      TokenMethod,
+	"function":    TokenFunction,
+	"constractor": TokenConstructor,
+	"int":         TokenInt,
+	"boolean":     TokenBoolean,
+	"char":        TokenChar,
+	"void":        TokenVoid,
+	"var":         TokenVar,
+	"static":      TokenStatic,
+	"field":       TokenField,
+	"let":         TokenLet,
+	"do":          TokenDo,
+	"if":          TokenIf,
+	"else":        TokenElse,
+	"while":       TokenWhile,
+	"return":      TokenReturn,
+	"true":        TokenTrue,
+	"false":       TokenFalse,
+	"null":        TokenNull,
 }
 
-func LookupKeyword(ident string) (kw Keyword, found bool) {
-	kw, found = keywords[ident]
-	return
-}
-
-func IsKeyword(ident string) bool {
-	_, isKw := keywords[ident]
-	return isKw
+func LookupKeyword(ident string) TokenKind {
+	kw, isKw := keywords[ident]
+	if isKw {
+		return kw
+	}
+	return TokenIdentifier
 }
