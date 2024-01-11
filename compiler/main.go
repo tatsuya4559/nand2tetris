@@ -38,12 +38,7 @@ func tokenizeFile(path string) {
 	}
 	defer file.Close()
 
-	tokenizer := NewTokenizer(file)
-	for {
-		tok := tokenizer.NextToken()
-		if tok.Kind == TokenEOF {
-			break
-		}
-		fmt.Printf("%+v\n", tok)
-	}
+	engine := NewCompilationEngine(file)
+	ast := engine.Compile()
+	fmt.Printf("%+v\n", ast)
 }

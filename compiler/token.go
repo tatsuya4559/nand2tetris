@@ -171,7 +171,7 @@ var keywords = map[string]TokenKind{
 	"this":        TokenThis,
 	"method":      TokenMethod,
 	"function":    TokenFunction,
-	"constractor": TokenConstructor,
+	"constructor": TokenConstructor,
 	"int":         TokenInt,
 	"boolean":     TokenBoolean,
 	"char":        TokenChar,
