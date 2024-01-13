@@ -135,6 +135,7 @@ let get_bool = get_token match_bool
 let separated ch p = List.cons <$> p <*> (many (get_symbol ch *> p))
 
 (*** Parser ***)
+let just sym value = (fun _ -> value) <$> get_symbol sym
 
 (* ident *)
 let parse_ident = (fun x -> Ident x) <$> get_ident
@@ -145,25 +146,25 @@ let parse_string = (fun x -> String x) <$> get_string
 
 (* keyword *)
 let parse_bool = (fun x -> Bool x) <$> get_bool
-let parse_null = (fun _ -> Null) <$> get_symbol "null"
-let parse_this = (fun _ -> This) <$> get_symbol "this"
+let parse_null = just "null" Null
+let parse_this = just "this" This
 let parse_keyword = parse_bool <|> parse_null <|> parse_this
 
 (* unary op *)
-let parse_neg = (fun _ -> Neg) <$> get_symbol "-"
-let parse_not = (fun _ -> Not) <$> get_symbol "~"
+let parse_neg = just "-" Neg
+let parse_not = just "~" Not
 let parse_unary_op = parse_neg <|> parse_not
 
 (* binary op *)
-let parse_plus = (fun _ -> Plus) <$> get_symbol "+"
-let parse_minus = (fun _ -> Minus) <$> get_symbol "-"
-let parse_mul = (fun _ -> Mul) <$> get_symbol "*"
-let parse_div = (fun _ -> Div) <$> get_symbol "/"
-let parse_and = (fun _ -> And) <$> get_symbol "&"
-let parse_or = (fun _ -> Or) <$> get_symbol "|"
-let parse_lt = (fun _ -> Lt) <$> get_symbol "<"
-let parse_gt = (fun _ -> Gt) <$> get_symbol ">"
-let parse_eq = (fun _ -> Eq) <$> get_symbol "="
+let parse_plus = just "+" Plus
+let parse_minus = just "-" Minus
+let parse_mul = just "*" Mul
+let parse_div = just "/" Div
+let parse_and = just "&" And
+let parse_or = just "|" Or
+let parse_lt = just "<" Lt
+let parse_gt = just ">" Gt
+let parse_eq = just "=" Eq
 let parse_binary_op =
     parse_plus <|> parse_minus <|> parse_mul <|> parse_div <|>
     parse_and <|> parse_or <|>
@@ -245,17 +246,17 @@ and parse_if cs = (
 
 (* declaration *)
 
-let parse_field = get_symbol "field" *> return Field
-let parse_static = get_symbol "static" *> return Static
+let parse_field = just "field" Field
+let parse_static = just "static" Static
 let parse_storage  = parse_field <|> parse_static
 
-let parse_int_type = get_symbol "int" *> return Int_type
-let parse_bool_type = get_symbol "boolean" *> return Bool_type
-let parse_char_type = get_symbol "char" *> return Char_type
+let parse_int_type = just "int" Int_type
+let parse_bool_type = just "boolean" Bool_type
+let parse_char_type = just "char" Char_type
 let parse_class_name = get_ident >>= (fun name -> return @@ Class_name name)
 let parse_type = parse_int_type <|> parse_bool_type <|> parse_char_type <|> parse_class_name
 
-let parse_void = get_symbol "void" *> return Void
+let parse_void = just "void" Void
 let parse_return_type = parse_void <|> parse_type
 
 
@@ -270,9 +271,9 @@ let parse_class_var =
     let* names = separated "," get_ident <* get_symbol ";" in
     return { storage; typ; names }
 
-let parse_constructor = (fun _ -> Constructor) <$> get_symbol "constructor"
-let parse_function = (fun _ -> Function) <$> get_symbol "function"
-let parse_method = (fun _ -> Method) <$> get_symbol "method"
+let parse_constructor = just "constructor" Constructor
+let parse_function = just "function" Function
+let parse_method = just "method" Method
 let parse_subroutine_kind = parse_constructor <|> parse_function <|> parse_method
 
 let parse_subroutine_param =
