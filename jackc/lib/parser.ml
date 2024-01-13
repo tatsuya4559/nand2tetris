@@ -14,7 +14,6 @@ let map f p =
     fun cs -> match p cs with
     | None -> None
     | Some (c, cs') -> Some (f c, cs')
-
 let ( <$> ) = map
 
 let pure v = fun cs -> Some (v, cs)
@@ -29,9 +28,6 @@ let ( <* ) xp yp = (fun x _ -> x) <$> xp <*> yp
 let ( *> ) xp yp = (fun _ y -> y) <$> xp <*> yp
 
 let product xp yp = (fun x y -> (x, y)) <$> xp <*> yp
-
-let ( let+ ) x f = map f x
-let ( and+ ) xa ya = product xa ya
 let ( => ) xa ya = product xa ya
 
 let empty = fun _ -> None
@@ -51,12 +47,6 @@ let bind xp fp =
 let ( >>= ) = bind
 let ( let* ) xp fp = bind xp fp
 let return = pure
-let ( and* ) xp yp =
-    fun cs -> match xp cs with
-    | None -> None
-    | Some (x, cs') -> match yp cs' with
-        | None -> None
-        | Some (y, cs'') -> Some ((x, y), cs'')
 
 let satisfy predicate =
     let* x = get_char in
@@ -116,9 +106,9 @@ let match_symbol s =
     let rec f = function
         | [] -> pure []
         | c :: cs ->
-            let* _ = match_char c
-            and* _ = f cs
-            in pure (c :: cs)
+            let* _ = match_char c in
+            let* _ = f cs in
+            pure (c :: cs)
     in
     String.to_list s |> f |> map String.of_char_list
 
