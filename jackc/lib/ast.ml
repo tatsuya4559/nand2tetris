@@ -1,11 +1,13 @@
 type unary_op =
     | Neg
     | Not
+    [@@deriving.show]
 
 type binary_op =
     | Plus | Minus | Mul | Div
     | And | Or
     | Lt | Gt | Eq
+    [@@deriving.show]
 
 type expr =
     | Ident of string
@@ -32,6 +34,7 @@ type statement =
 type storage_class =
     | Field
     | Static
+    [@@deriving.show]
 
 type jack_type =
     | Int_type
@@ -39,32 +42,38 @@ type jack_type =
     | Char_type
     | Class_name of string
     | Void
+    [@@deriving.show]
 
 type local_var_dec = {
     typ: jack_type;
     names: string list;
 }
+[@@deriving.show]
 
 type class_var_dec = {
     storage: storage_class;
     typ: jack_type;
     names: string list;
 }
+[@@deriving.show]
 
 type subroutine_kind =
     | Constructor
     | Function
     | Method
+    [@@deriving.show]
 
 type subroutine_param = {
     typ: jack_type;
     name: string
 }
+[@@deriving.show]
 
 type subroutine_body = {
     vars: local_var_dec list;
     stmts: statement list;
 }
+[@@deriving.show]
 
 type subroutine_dec = {
     kind: subroutine_kind;
@@ -73,9 +82,11 @@ type subroutine_dec = {
     params: subroutine_param list;
     body: subroutine_body;
 }
+[@@deriving.show]
 
 type class_dec = {
     name: string;
     vars: class_var_dec list;
     subroutines: subroutine_dec list;
 }
+[@@deriving.show]
