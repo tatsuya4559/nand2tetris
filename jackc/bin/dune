@@ -1,0 +1,4 @@
+(executable
+ (public_name jackc)
+ (name main)
+ (libraries jackc))
