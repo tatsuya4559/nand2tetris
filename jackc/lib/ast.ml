@@ -1,13 +1,13 @@
 type unary_op =
     | Neg
     | Not
-    [@@deriving.show]
+    [@@deriving show]
 
 type binary_op =
     | Plus | Minus | Mul | Div
     | And | Or
     | Lt | Gt | Eq
-    [@@deriving.show]
+    [@@deriving show]
 
 type expr =
     | Ident of string
@@ -21,7 +21,7 @@ type expr =
     | Indexing of (expr * expr)
     | Dot_notation of (expr * expr)
     | Call of (expr * expr list)
-    [@@deriving.show]
+    [@@deriving show]
 
 type statement =
     | Let of (expr * expr)
@@ -29,12 +29,12 @@ type statement =
     | While of { cond: expr; body: statement list }
     | Do of expr
     | Return of expr option
-    [@@deriving.show]
+    [@@deriving show]
 
 type storage_class =
     | Field
     | Static
-    [@@deriving.show]
+    [@@deriving show]
 
 type jack_type =
     | Int_type
@@ -42,38 +42,38 @@ type jack_type =
     | Char_type
     | Class_name of string
     | Void
-    [@@deriving.show]
+    [@@deriving show]
 
 type local_var_dec = {
     typ: jack_type;
     names: string list;
 }
-[@@deriving.show]
+[@@deriving show]
 
 type class_var_dec = {
     storage: storage_class;
     typ: jack_type;
     names: string list;
 }
-[@@deriving.show]
+[@@deriving show]
 
 type subroutine_kind =
     | Constructor
     | Function
     | Method
-    [@@deriving.show]
+    [@@deriving show]
 
 type subroutine_param = {
     typ: jack_type;
     name: string
 }
-[@@deriving.show]
+[@@deriving show]
 
 type subroutine_body = {
     vars: local_var_dec list;
     stmts: statement list;
 }
-[@@deriving.show]
+[@@deriving show]
 
 type subroutine_dec = {
     kind: subroutine_kind;
@@ -82,11 +82,11 @@ type subroutine_dec = {
     params: subroutine_param list;
     body: subroutine_body;
 }
-[@@deriving.show]
+[@@deriving show]
 
 type class_dec = {
     name: string;
     vars: class_var_dec list;
     subroutines: subroutine_dec list;
 }
-[@@deriving.show]
+[@@deriving show]
