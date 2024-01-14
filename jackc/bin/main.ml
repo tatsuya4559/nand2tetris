@@ -11,7 +11,7 @@ let out_filename arg =
 let compile_file filename =
     let src = In_channel.read_all filename in
     match Parser.parse Parser.parse_class src with
-    | None -> Printf.eprintf "error!"; exit 1
+    | None -> die @@ Printf.sprintf "failed to parse %s" filename
     | Some (parsed, _) ->
         Out_channel.write_all (out_filename filename) ~data:(Ast.show_class_dec parsed)
 
