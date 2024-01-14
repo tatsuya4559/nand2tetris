@@ -9,13 +9,11 @@ let out_filename arg =
     stem ^ ".vm"
 
 let compile_file filename =
-    In_channel.with_file filename ~f:(fun ic ->
-        let src = In_channel.input_all ic in
-        match Parser.parse Parser.parse_class src with
-        | None -> Printf.eprintf "error!"; exit 1
-        | Some (parsed, _) ->
-            Out_channel.write_all (out_filename filename) ~data:(Ast.show_class_dec parsed)
-    )
+    let src = In_channel.read_all filename in
+    match Parser.parse Parser.parse_class src with
+    | None -> Printf.eprintf "error!"; exit 1
+    | Some (parsed, _) ->
+        Out_channel.write_all (out_filename filename) ~data:(Ast.show_class_dec parsed)
 
 let compile_dir dirname =
     Sys_unix.ls_dir dirname
