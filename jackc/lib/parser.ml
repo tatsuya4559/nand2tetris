@@ -276,7 +276,7 @@ let parse_class_storage  = parse_field <|> parse_static
 let parse_int_type = just "int" Int_type
 let parse_bool_type = just "boolean" Bool_type
 let parse_char_type = just "char" Char_type
-let parse_class_name = get_ident >>= (fun name -> return @@ Class_name name)
+let parse_class_name = (fun name -> Class_name name) <$> get_ident
 let parse_type = parse_int_type <|> parse_bool_type <|> parse_char_type <|> parse_class_name
 
 let parse_void = just "void" Void
