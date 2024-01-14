@@ -48,6 +48,9 @@ let ( >>= ) = bind
 let ( let* ) xp fp = bind xp fp
 let return = pure
 
+let discard p =
+    (fun _ -> ()) <$> p
+
 let satisfy predicate =
     let* x = get_char in
     if predicate x then
@@ -62,7 +65,7 @@ let match_space =
         | ' ' | '\t' | '\n' | '\r' -> true
         | _ -> false
     in
-    satisfy p
+    discard @@ satisfy p
 
 let rec many p cs =
     (some p <|> pure []) cs
@@ -122,9 +125,28 @@ let match_false =
 
 let match_bool = match_true <|> match_false
 
+let match_any = satisfy (fun _ -> true)
+
+(* negative lookahead *)
+let bang p =
+    fun cs -> match p cs with
+    | Some _ -> None
+    | None -> Some ((), cs)
+
+let match_line_comment =
+    let match_non_newline = satisfy (fun c -> Char.(c <> '\n')) in
+    discard @@ match_symbol "//" *> many match_non_newline <* match_char '\n'
+
+let match_block_comment =
+    let match_start = match_symbol "/*" in
+    let match_end = match_symbol "*/" in
+    let match_content = (bang match_end) <.> match_any in
+    discard @@ match_start *> many match_content <* match_end
+
+let match_ignored = match_space <|> match_line_comment <|> match_block_comment
 
 (*** Getter ***)
-let get_token p = many match_space *> p <* many match_space
+let get_token p = many match_ignored *> p <* many match_ignored
 
 let get_ident = get_token match_ident
 let get_int = get_token match_int
