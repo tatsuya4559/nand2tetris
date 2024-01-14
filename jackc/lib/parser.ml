@@ -290,7 +290,7 @@ let parse_subroutine =
     let* kind = parse_subroutine_kind in
     let* return_type = parse_return_type in
     let* name = get_ident in
-    let* params = get_symbol "(" *> separated "," parse_subroutine_param <* get_symbol ")" in
+    let* params = get_symbol "(" *> optional [] (separated "," parse_subroutine_param) <* get_symbol ")" in
     let* body = get_symbol "{" *> parse_subroutine_body <* get_symbol "}" in
     return { kind; return_type; name; params; body }
 
