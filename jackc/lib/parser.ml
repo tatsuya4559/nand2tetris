@@ -229,7 +229,7 @@ let parse_let =
     return @@ Let (name, v)
 
 let rec parse_statement cs =
-    (parse_do <|> parse_return <|> parse_let <|> parse_while) cs
+    (parse_do <|> parse_return <|> parse_let <|> parse_if <|> parse_while) cs
 
 and parse_while cs = (
     let* cond = get_symbol "while" *> get_symbol "(" *> parse_expr <* get_symbol ")" in
