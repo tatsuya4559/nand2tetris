@@ -270,7 +270,8 @@ and parse_if cs = (
 
 let parse_field = just "field" Field
 let parse_static = just "static" Static
-let parse_storage  = parse_field <|> parse_static
+let parse_var = just "var" Var
+let parse_class_storage  = parse_field <|> parse_static
 
 let parse_int_type = just "int" Int_type
 let parse_bool_type = just "boolean" Bool_type
@@ -283,15 +284,16 @@ let parse_return_type = parse_void <|> parse_type
 
 
 let parse_local_var =
-    let* typ = get_symbol "var" *> parse_type in
-    let* names = separated "," get_ident <* get_symbol ";" in
-    return { typ; names }
-
-let parse_class_var =
-    let* storage = parse_storage in
+    let* storage = parse_var in
     let* typ = parse_type in
     let* names = separated "," get_ident <* get_symbol ";" in
-    return { storage; typ; names }
+    return (List.map names ~f:(fun name -> { storage; typ; name = name }))
+
+let parse_class_var =
+    let* storage = parse_class_storage in
+    let* typ = parse_type in
+    let* names = separated "," get_ident <* get_symbol ";" in
+    return (List.map names ~f:(fun name -> { storage; typ; name }))
 
 let parse_constructor = just "constructor" Constructor
 let parse_function = just "function" Function
@@ -304,7 +306,7 @@ let parse_subroutine_param =
     return { typ; name }
 
 let parse_subroutine_body =
-    let* vars = many parse_local_var in
+    let* vars = List.concat <$> many parse_local_var in
     let* stmts = many parse_statement in
     return { vars; stmts }
 
@@ -318,6 +320,6 @@ let parse_subroutine =
 
 let parse_class =
     let* name = get_symbol "class" *> get_ident <* get_symbol "{" in
-    let* vars = many parse_class_var in
+    let* vars = List.concat <$> many parse_class_var in
     let* subroutines = many parse_subroutine <* get_symbol "}" in
     return {name; vars; subroutines }
