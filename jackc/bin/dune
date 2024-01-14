@@ -1,5 +1,5 @@
 (executable
  (public_name jackc)
  (name main)
- (libraries jackc core core_unix.command_unix)
+ (libraries jackc core core_unix.command_unix core_unix.sys_unix)
  (preprocess (pps ppx_jane)))
