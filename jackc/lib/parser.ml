@@ -28,7 +28,7 @@ let ( <* ) xp yp = (fun x _ -> x) <$> xp <*> yp
 let ( *> ) xp yp = (fun _ y -> y) <$> xp <*> yp
 
 let product xp yp = (fun x y -> (x, y)) <$> xp <*> yp
-let ( => ) xa ya = product xa ya
+let ( <.> ) xa ya = product xa ya
 
 let empty = fun _ -> None
 
@@ -178,7 +178,7 @@ let rec parse_term cs =
 
 and parse_expr cs = (
     let* left = parse_term in
-    let* result = many (parse_binary_op => parse_expr) in
+    let* result = many (parse_binary_op <.> parse_expr) in
     match result with
     | [] -> return left
     | (op, right) :: tl ->
@@ -187,7 +187,7 @@ and parse_expr cs = (
     ) cs
 
 and parse_prefix cs =
-    ((fun (op, e) -> Prefix (op, e)) <$> (parse_unary_op => parse_expr)) cs
+    ((fun (op, e) -> Prefix (op, e)) <$> (parse_unary_op <.> parse_expr)) cs
 
 and parse_factor cs =
     (get_symbol "(" *> parse_expr <* get_symbol ")") cs
