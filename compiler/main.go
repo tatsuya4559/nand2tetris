@@ -24,14 +24,14 @@ func main() {
 			Die("jack files not found: %v", err)
 		}
 		for _, jackFile := range jackFiles {
-			tokenizeFile(jackFile)
+			compileFile(jackFile)
 		}
 	} else {
-		tokenizeFile(path)
+		compileFile(path)
 	}
 }
 
-func tokenizeFile(path string) {
+func compileFile(path string) {
 	file, err := os.Open(path)
 	if err != nil {
 		Die("cannot open %s: %v", path, err)
