@@ -32,10 +32,8 @@ func (e *CompilationEngine) expectPeek(kinds ...TokenKind) {
 		e.nextToken()
 		return
 	}
-	// Die("Line %d: Unexpected token found. Expected %v, but got %v",
-	// 	e.tokenizer.CurrentLineNum(), kinds, e.peekToken.Kind)
-	panic(fmt.Sprintf("Line %d: Unexpected token found. Expected %v, but got %v",
-		e.tokenizer.CurrentLineNum(), kinds, e.peekToken.Kind))
+	Die("Line %d: Unexpected token found. Expected %v, but got %v",
+		e.tokenizer.CurrentLineNum(), kinds, e.peekToken.Kind)
 }
 
 func (e *CompilationEngine) nextToken() {
