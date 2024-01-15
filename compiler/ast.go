@@ -9,7 +9,7 @@ type ClassDeclaration struct {
 type ClassVarDeclaration struct {
 	StorageClass string // static or field
 	Type         string
-	Names        []string
+	Name         string
 }
 
 type SubroutineDeclaration struct {
@@ -31,8 +31,8 @@ type SubroutineBody struct {
 }
 
 type LocalVarDeclaration struct {
-	Type  string
-	Names []string
+	Type string
+	Name string
 }
 
 type Statement interface {

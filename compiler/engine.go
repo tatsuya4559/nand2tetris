@@ -58,8 +58,8 @@ func (e *CompilationEngine) compileClass() *ClassDeclaration {
 	e.expectPeek(TokenLBrace)
 	for e.peekToken.Kind == TokenStatic || e.peekToken.Kind == TokenField {
 		e.nextToken() // read static or field
-		dec := e.compileClassVarDec()
-		class.Vars = append(class.Vars, dec)
+		vars := e.compileClassVarDec()
+		class.Vars = append(class.Vars, vars...)
 	}
 	for e.peekToken.Kind == TokenConstructor ||
 		e.peekToken.Kind == TokenFunction ||
@@ -73,24 +73,32 @@ func (e *CompilationEngine) compileClass() *ClassDeclaration {
 	return &class
 }
 
-func (e *CompilationEngine) compileClassVarDec() *ClassVarDeclaration {
-	var dec ClassVarDeclaration
-	dec.StorageClass = e.currentToken.Literal // static or field
+func (e *CompilationEngine) compileClassVarDec() []*ClassVarDeclaration {
+	var vars []*ClassVarDeclaration
+	storage := e.currentToken.Literal // static or field
 
 	e.expectPeek(TokenIdentifier, TokenInt, TokenChar, TokenBoolean)
-	dec.Type = e.currentToken.Literal
+	typ := e.currentToken.Literal
 
 	e.expectPeek(TokenIdentifier)
-	dec.Names = append(dec.Names, e.currentToken.Literal)
+	vars = append(vars, &ClassVarDeclaration{
+		StorageClass: storage,
+		Type:         typ,
+		Name:         e.currentToken.Literal,
+	})
 
 	for e.peekToken.Kind == TokenComma {
 		e.nextToken() // read comma
 		e.expectPeek(TokenIdentifier)
-		dec.Names = append(dec.Names, e.currentToken.Literal)
+		vars = append(vars, &ClassVarDeclaration{
+			StorageClass: storage,
+			Type:         typ,
+			Name:         e.currentToken.Literal,
+		})
 	}
 
 	e.expectPeek(TokenSemicolon)
-	return &dec
+	return vars
 }
 
 func (e *CompilationEngine) compileSubroutine() *SubroutineDeclaration {
@@ -130,7 +138,7 @@ func (e *CompilationEngine) compileParameterList() []*Param {
 func (e *CompilationEngine) compileSubroutineBody() *SubroutineBody {
 	var body SubroutineBody
 	for e.peekToken.Kind == TokenVar {
-		body.Vars = append(body.Vars, e.compileLocalVarDec())
+		body.Vars = append(body.Vars, e.compileLocalVarDec()...)
 	}
 	for e.peekToken.Kind != TokenRBrace {
 		body.Statements = append(body.Statements, e.compileStatement())
@@ -140,23 +148,29 @@ func (e *CompilationEngine) compileSubroutineBody() *SubroutineBody {
 	return &body
 }
 
-func (e *CompilationEngine) compileLocalVarDec() *LocalVarDeclaration {
-	var dec LocalVarDeclaration
+func (e *CompilationEngine) compileLocalVarDec() []*LocalVarDeclaration {
+	var vars []*LocalVarDeclaration
 	e.expectPeek(TokenVar)
 
 	e.expectPeek(TokenIdentifier, TokenInt, TokenChar, TokenBoolean)
-	dec.Type = e.currentToken.Literal
+	typ := e.currentToken.Literal
 
 	e.expectPeek(TokenIdentifier)
-	dec.Names = append(dec.Names, e.currentToken.Literal)
+	vars = append(vars, &LocalVarDeclaration{
+		Type: typ,
+		Name: e.currentToken.Literal,
+	})
 	for e.peekToken.Kind != TokenSemicolon {
 		e.expectPeek(TokenComma)
 		e.expectPeek(TokenIdentifier)
-		dec.Names = append(dec.Names, e.currentToken.Literal)
+		vars = append(vars, &LocalVarDeclaration{
+			Type: typ,
+			Name: e.currentToken.Literal,
+		})
 	}
 	e.expectPeek(TokenSemicolon)
 
-	return &dec
+	return vars
 }
 
 func (e *CompilationEngine) compileStatement() Statement {
