@@ -2,9 +2,9 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 func main() {
@@ -31,14 +31,24 @@ func main() {
 	}
 }
 
+func outFilename(inFilename string) string {
+	ext := filepath.Ext(inFilename)
+	return strings.TrimSuffix(inFilename, ext) + ".vm"
+}
+
 func compileFile(path string) {
-	file, err := os.Open(path)
+	jackFile, err := os.Open(path)
 	if err != nil {
 		Die("cannot open %s: %v", path, err)
 	}
-	defer file.Close()
+	defer jackFile.Close()
 
-	engine := NewCompilationEngine(file)
-	ast := engine.Compile()
-	fmt.Printf("%+v\n", ast)
+	vmFile, err := os.Create(outFilename(path))
+	if err != nil {
+		Die("cannot create vm file: %v", err)
+	}
+	defer vmFile.Close()
+
+	engine := NewCompilationEngine(jackFile, vmFile)
+	engine.Compile()
 }

@@ -1,12 +1,12 @@
 package main
 
-type Scope int
+type Scope string
 
 const (
-	ScopeStatic Scope = iota
-	ScopeField
-	ScopeArg
-	ScopeVar
+	ScopeStatic Scope = "static"
+	ScopeField  Scope = "this"
+	ScopeArg    Scope = "argument"
+	ScopeVar    Scope = "local"
 )
 
 type SymbolTableEntry struct {
@@ -26,6 +26,7 @@ func NewSymbolTable() *SymbolTable {
 	return &SymbolTable{
 		classScope: make(map[string]*SymbolTableEntry),
 		localScope: make(map[string]*SymbolTableEntry),
+		nextIndex:  make(map[Scope]int),
 	}
 }
 
@@ -78,4 +79,6 @@ func (s *SymbolTable) Find(name string) *SymbolTableEntry {
 
 func (s *SymbolTable) ResetLocalScope() {
 	clear(s.localScope)
+	s.nextIndex[ScopeArg] = 0
+	s.nextIndex[ScopeVar] = 0
 }

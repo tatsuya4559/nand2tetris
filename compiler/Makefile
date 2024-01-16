@@ -1,4 +1,6 @@
 BIN := jackc
 
-$(BIN):
+SRC := $(shell ls *.go)
+
+$(BIN): $(SRC)
 	go build -o $@ .

@@ -5,20 +5,24 @@ import (
 	"io"
 	"slices"
 	"strconv"
+	"strings"
 )
 
 type CompilationEngine struct {
 	tokenizer *Tokenizer
+	vmwriter  *VMWriter
+	symtable  *SymbolTable
 
 	currentToken Token
 	peekToken    Token
 }
 
-func NewCompilationEngine(input io.Reader) *CompilationEngine {
+func NewCompilationEngine(input io.Reader, out io.Writer) *CompilationEngine {
 	engine := CompilationEngine{
 		tokenizer: NewTokenizer(input),
+		vmwriter:  NewVMWriter(out),
+		symtable:  NewSymbolTable(),
 	}
-	engine.nextToken()
 	engine.nextToken()
 	return &engine
 }
@@ -32,8 +36,8 @@ func (e *CompilationEngine) expectPeek(kinds ...TokenKind) {
 		e.nextToken()
 		return
 	}
-	Die("Line %d: Unexpected token found. Expected %v, but got %v",
-		e.tokenizer.CurrentLineNum(), kinds, e.peekToken.Kind)
+	Die("Line %d: Unexpected token found. Expected %v, but got %v(%v)",
+		e.tokenizer.CurrentLineNum(), kinds, e.peekToken.Kind, e.peekToken.Literal)
 }
 
 func (e *CompilationEngine) nextToken() {
@@ -41,294 +45,383 @@ func (e *CompilationEngine) nextToken() {
 	e.peekToken = e.tokenizer.NextToken()
 }
 
-func (e *CompilationEngine) Compile() *ClassDeclaration {
-	return e.compileClass()
+func (e *CompilationEngine) Compile() {
+	e.compileClass()
 }
 
-// It is assumed currentToken is TokenClass when this method is called.
-func (e *CompilationEngine) compileClass() *ClassDeclaration {
-	Assert(e.currentToken.Kind == TokenClass)
-
-	var class ClassDeclaration
+func (e *CompilationEngine) compileClass() {
+	e.expectPeek(TokenClass)
 	e.expectPeek(TokenIdentifier)
-	class.Name = e.currentToken.Literal
-
+	className := e.currentToken.Literal
 	e.expectPeek(TokenLBrace)
+
+	var nFields int
 	for e.peekToken.Kind == TokenStatic || e.peekToken.Kind == TokenField {
-		e.nextToken() // read static or field
-		vars := e.compileClassVarDec()
-		class.Vars = append(class.Vars, vars...)
+		nFields += e.compileClassVarDec()
 	}
+
 	for e.peekToken.Kind == TokenConstructor ||
 		e.peekToken.Kind == TokenFunction ||
 		e.peekToken.Kind == TokenMethod {
-		e.nextToken() // read constructor or function or method
-		sub := e.compileSubroutine()
-		class.Subroutines = append(class.Subroutines, sub)
+		e.compileSubroutine(className, nFields)
 	}
 	e.expectPeek(TokenRBrace)
-
-	return &class
 }
 
-func (e *CompilationEngine) compileClassVarDec() []*ClassVarDeclaration {
-	var vars []*ClassVarDeclaration
-	storage := e.currentToken.Literal // static or field
+func (e *CompilationEngine) compileClassVarDec() int {
+	var nFields int
+	e.expectPeek(TokenField, TokenStatic)
+	storage := e.currentToken.Literal
 
 	e.expectPeek(TokenIdentifier, TokenInt, TokenChar, TokenBoolean)
 	typ := e.currentToken.Literal
 
 	e.expectPeek(TokenIdentifier)
-	vars = append(vars, &ClassVarDeclaration{
-		StorageClass: storage,
-		Type:         typ,
-		Name:         e.currentToken.Literal,
-	})
+	name := e.currentToken.Literal
+
+	e.symtable.Define(name, typ, storageToScope(storage))
+	if storage == "field" {
+		nFields++
+	}
 
 	for e.peekToken.Kind == TokenComma {
-		e.nextToken() // read comma
+		e.expectPeek(TokenComma)
 		e.expectPeek(TokenIdentifier)
-		vars = append(vars, &ClassVarDeclaration{
-			StorageClass: storage,
-			Type:         typ,
-			Name:         e.currentToken.Literal,
-		})
+		name = e.currentToken.Literal
+		e.symtable.Define(name, typ, storageToScope(storage))
+		nFields++
 	}
 
 	e.expectPeek(TokenSemicolon)
-	return vars
+	return nFields
 }
 
-func (e *CompilationEngine) compileSubroutine() *SubroutineDeclaration {
-	var dec SubroutineDeclaration
-	dec.Kind = e.currentToken.Literal
+func (e *CompilationEngine) compileSubroutine(className string, nFields int) {
+	e.symtable.ResetLocalScope()
+
+	/* Declaration */
+	e.expectPeek(TokenConstructor, TokenFunction, TokenMethod)
+	kind := e.currentToken.Literal
 
 	e.expectPeek(TokenVoid, TokenIdentifier, TokenInt, TokenChar, TokenBoolean)
-	dec.ReturnType = e.currentToken.Literal
 
 	e.expectPeek(TokenIdentifier)
-	dec.Name = e.currentToken.Literal
+	name := fmt.Sprintf("%s.%s", className, e.currentToken.Literal)
 
-	e.expectPeek(TokenLParen)
-	dec.Params = e.compileParameterList()
+	/* Params */
+	e.compileParameterList()
+
+	/* Body */
 	e.expectPeek(TokenLBrace)
-	dec.Body = e.compileSubroutineBody()
 
-	return &dec
-}
-
-func (e *CompilationEngine) compileParameterList() []*Param {
-	Assert(e.currentToken.Kind == TokenLParen)
-
-	var params []*Param
-	for e.peekToken.Kind != TokenRParen {
-		var param Param
-		e.expectPeek(TokenIdentifier, TokenInt, TokenChar, TokenBoolean)
-		param.Type = e.currentToken.Literal
-		e.expectPeek(TokenIdentifier)
-		param.Name = e.currentToken.Literal
-		params = append(params, &param)
-	}
-	e.expectPeek(TokenRParen)
-	return params
-}
-
-func (e *CompilationEngine) compileSubroutineBody() *SubroutineBody {
-	var body SubroutineBody
+	nLocals := 0
 	for e.peekToken.Kind == TokenVar {
-		body.Vars = append(body.Vars, e.compileLocalVarDec()...)
+		nLocals += e.compileLocalVarDec()
 	}
+	e.vmwriter.WriteFunction(name, nLocals)
+
+	if kind == "constructor" {
+		// this = Memory.alloc(nFields)
+		e.vmwriter.WritePush(SegConst, nFields)
+		e.vmwriter.WriteCall("Memory.alloc", 1)
+		e.vmwriter.WritePop(SegPointer, 0)
+	}
+
 	for e.peekToken.Kind != TokenRBrace {
-		body.Statements = append(body.Statements, e.compileStatement())
+		e.compileStatement()
 	}
 
 	e.expectPeek(TokenRBrace)
-	return &body
 }
 
-func (e *CompilationEngine) compileLocalVarDec() []*LocalVarDeclaration {
-	var vars []*LocalVarDeclaration
+func (e *CompilationEngine) compileParameterList() {
+	e.expectPeek(TokenLParen)
+	for e.peekToken.Kind != TokenRParen {
+		e.expectPeek(TokenIdentifier, TokenInt, TokenChar, TokenBoolean)
+		typ := e.currentToken.Literal
+
+		e.expectPeek(TokenIdentifier)
+		name := e.currentToken.Literal
+
+		e.symtable.Define(name, typ, ScopeArg)
+
+		if e.peekToken.Kind == TokenComma {
+			e.expectPeek(TokenComma)
+		} else {
+			break
+		}
+	}
+	e.expectPeek(TokenRParen)
+}
+
+func (e *CompilationEngine) compileLocalVarDec() int {
+	var nLocals int
 	e.expectPeek(TokenVar)
 
 	e.expectPeek(TokenIdentifier, TokenInt, TokenChar, TokenBoolean)
 	typ := e.currentToken.Literal
 
 	e.expectPeek(TokenIdentifier)
-	vars = append(vars, &LocalVarDeclaration{
-		Type: typ,
-		Name: e.currentToken.Literal,
-	})
+	name := e.currentToken.Literal
+
+	e.symtable.Define(name, typ, ScopeVar)
+	nLocals++
+
 	for e.peekToken.Kind != TokenSemicolon {
 		e.expectPeek(TokenComma)
 		e.expectPeek(TokenIdentifier)
-		vars = append(vars, &LocalVarDeclaration{
-			Type: typ,
-			Name: e.currentToken.Literal,
-		})
+		name = e.currentToken.Literal
+		e.symtable.Define(name, typ, ScopeVar)
+		nLocals++
 	}
 	e.expectPeek(TokenSemicolon)
 
-	return vars
+	return nLocals
 }
 
-func (e *CompilationEngine) compileStatement() Statement {
+func (e *CompilationEngine) compileStatement() {
 	switch e.peekToken.Kind {
 	case TokenDo:
-		e.nextToken()
-		return e.compileDo()
+		e.compileDo()
 	case TokenLet:
-		e.nextToken()
-		return e.compileLet()
+		e.compileLet()
 	case TokenWhile:
-		e.nextToken()
-		return e.compileWhile()
+		e.compileWhile()
 	case TokenReturn:
-		e.nextToken()
-		return e.compileReturn()
+		e.compileReturn()
 	case TokenIf:
-		e.nextToken()
-		return e.compileIf()
+		e.compileIf()
 	default:
-		Assert(false)
-		return nil // unreachable
+		panic("unknown statement found")
 	}
 }
 
-func (e *CompilationEngine) compileDo() *DoStatement {
-	var stmt DoStatement
-	stmt.Call = e.compileExpression()
-	if _, ok := stmt.Call.(*SubroutineCallExpression); !ok {
-		Die("expected subroutine call")
-	}
+func (e *CompilationEngine) compileDo() {
+	e.expectPeek(TokenDo)
+	e.compileExpression()
 	e.expectPeek(TokenSemicolon)
-	return &stmt
+	e.vmwriter.WritePop(SegTemp, 0) // discard return value
 }
 
-func (e *CompilationEngine) compileLet() *LetStatement {
-	var stmt LetStatement
+func (e *CompilationEngine) compileLet() {
+	var leftIsArray bool
+
+	e.expectPeek(TokenLet)
 	e.expectPeek(TokenIdentifier)
-	stmt.Name = e.currentToken.Literal
+	name := e.currentToken.Literal
+	entry := e.symtable.Find(name)
 
 	if e.peekToken.Kind == TokenLBracket {
-		stmt.Index = e.compileExpression()
+		leftIsArray = true
+		e.expectPeek(TokenLBracket)
+
+		e.vmwriter.WritePush(Segment(entry.Scope), entry.Index)
+		e.compileExpression()
+		e.vmwriter.WriteArithmeric(CmdAdd)
+		e.vmwriter.WritePop(SegPointer, 1)
+
+		e.expectPeek(TokenRBracket)
 	}
 
 	e.expectPeek(TokenEqual)
-
-	stmt.Value = e.compileExpression()
-
+	e.compileExpression()
 	e.expectPeek(TokenSemicolon)
 
-	return &stmt
+	if leftIsArray {
+		e.vmwriter.WritePop(SegThat, 0)
+	} else {
+		e.vmwriter.WritePop(Segment(entry.Scope), entry.Index)
+	}
 }
 
-func (e *CompilationEngine) compileWhile() *WhileStatement {
-	var stmt WhileStatement
+func (e *CompilationEngine) compileWhile() {
+	e.expectPeek(TokenWhile)
+
+	loopLabel := genLabel("loop")
+	endLabel := genLabel("end")
+
+	/* Condition */
+	e.vmwriter.WriteLabel(loopLabel)
 	e.expectPeek(TokenLParen)
-	stmt.Condition = e.compileExpression()
+	e.compileExpression()
+	e.vmwriter.WriteArithmeric(CmdNot)
+	e.vmwriter.WriteIf(endLabel)
 	e.expectPeek(TokenRParen)
+
+	/* Body */
 	e.expectPeek(TokenLBrace)
 	for e.peekToken.Kind != TokenRBrace {
-		stmt.Body = append(stmt.Body, e.compileStatement())
+		e.compileStatement()
 	}
 	e.expectPeek(TokenRBrace)
-	return &stmt
+	e.vmwriter.WriteGoto(loopLabel)
+	e.vmwriter.WriteLabel(endLabel)
 }
 
-func (e *CompilationEngine) compileReturn() *ReturnStatement {
-	var stmt ReturnStatement
+func (e *CompilationEngine) compileReturn() {
+	e.expectPeek(TokenReturn)
 	if e.peekToken.Kind != TokenSemicolon {
-		stmt.Value = e.compileExpression()
+		e.compileExpression()
+	} else {
+		// pseudo return value for void function
+		e.vmwriter.WritePush(SegConst, 0)
 	}
+	e.vmwriter.WriteReturn()
 	e.expectPeek(TokenSemicolon)
-	return &stmt
 }
 
-func (e *CompilationEngine) compileIf() *IfStatement {
-	var stmt IfStatement
+func (e *CompilationEngine) compileIf() {
+	e.expectPeek(TokenIf)
+
 	e.expectPeek(TokenLParen)
-	stmt.Condition = e.compileExpression()
+	e.compileExpression()
 	e.expectPeek(TokenRParen)
+
+	elseLabel := genLabel("else")
+	endLabel := genLabel("end")
+	e.vmwriter.WriteArithmeric(CmdNot)
+	e.vmwriter.WriteIf(elseLabel)
+
 	e.expectPeek(TokenLBrace)
 	for e.peekToken.Kind != TokenRBrace {
-		stmt.Then = append(stmt.Then, e.compileStatement())
+		e.compileStatement()
 	}
 	e.expectPeek(TokenRBrace)
+
+	e.vmwriter.WriteGoto(endLabel)
+	e.vmwriter.WriteLabel(elseLabel)
 	if e.peekToken.Kind == TokenElse {
 		e.expectPeek(TokenElse)
 		e.expectPeek(TokenLBrace)
 		for e.peekToken.Kind != TokenRBrace {
-			stmt.Else = append(stmt.Else, e.compileStatement())
+			e.compileStatement()
 		}
 		e.expectPeek(TokenRBrace)
 	}
-	return &stmt
+	e.vmwriter.WriteLabel(endLabel)
 }
 
-func (e *CompilationEngine) compileExpression() Expression {
-	var left Expression
+func (e *CompilationEngine) compileExpression() {
+	var fn string
+	var entry *SymbolTableEntry
 	switch e.peekToken.Kind {
 	case TokenNull:
 		e.nextToken()
-		left = NULL
+		e.vmwriter.WritePush(SegConst, 0)
 	case TokenThis:
 		e.nextToken()
-		left = THIS
+		e.vmwriter.WritePush(SegPointer, 0)
 	case TokenTrue:
 		e.nextToken()
-		left = TRUE
+		e.vmwriter.WritePush(SegConst, 1)
+		e.vmwriter.WriteArithmeric(CmdNeg)
 	case TokenFalse:
 		e.nextToken()
-		left = FALSE
+		e.vmwriter.WritePush(SegConst, 0)
 	case TokenIdentifier:
 		e.nextToken()
-		left = &IdentExpression{Value: e.currentToken.Literal}
+		entry = e.symtable.Find(e.currentToken.Literal)
+		if entry == nil {
+			fn = e.currentToken.Literal
+			break
+		}
+		e.vmwriter.WritePush(Segment(entry.Scope), entry.Index)
 	case TokenString:
 		e.nextToken()
-		left = &StringLiteralExpression{Value: e.currentToken.Literal}
+		str := e.currentToken.Literal
+		e.vmwriter.WritePush(SegConst, len(str))
+		e.vmwriter.WriteCall("String.new", 1)
+		for _, r := range str {
+			e.vmwriter.WritePush(SegConst, int(r))
+			e.vmwriter.WriteCall("String.appendChar", 2)
+		}
 	case TokenNumber:
 		e.nextToken()
 		v, err := strconv.Atoi(e.currentToken.Literal)
 		if err != nil {
 			panic("did not int")
 		}
-		left = &IntLiteralExpression{Value: v}
+		e.vmwriter.WritePush(SegConst, v)
 	case TokenLParen:
-		e.nextToken()
-		expr := e.compileExpression()
+		e.expectPeek(TokenLParen)
+		e.compileExpression()
 		e.expectPeek(TokenRParen)
-		left = expr
-	case TokenTilda, TokenMinus:
+	case TokenTilda:
 		e.nextToken()
-		var expr PrefixExpression
-		expr.Operator = e.currentToken.Literal
-		expr.Right = e.compileExpression()
-		left = &expr
+		e.compileExpression()
+		e.vmwriter.WriteArithmeric(CmdNot)
+	case TokenMinus:
+		e.nextToken()
+		e.compileExpression()
+		e.vmwriter.WriteArithmeric(CmdNeg)
+	default:
+		Die("invalid expression: %v", e.peekToken)
 	}
 
 	if e.peekToken.Kind == TokenDot {
-		e.nextToken()
-		dot := &DotAccessExpression{Left: left}
+		e.expectPeek(TokenDot)
 		e.expectPeek(TokenIdentifier)
-		dot.Right = &IdentExpression{Value: e.currentToken.Literal}
-		left = dot
+		fn += "."
+		fn += e.currentToken.Literal
+	}
+	if e.peekToken.Kind == TokenLBracket {
+		e.nextToken()
+		e.compileExpression()
+		e.vmwriter.WriteArithmeric(CmdAdd)
+		e.vmwriter.WritePop(SegPointer, 1)
+		e.vmwriter.WritePush(SegThat, 0)
+		e.expectPeek(TokenRBracket)
 	}
 
 	switch e.peekToken.Kind {
-	case TokenPlus, TokenMinus, TokenAsterisk, TokenSlash,
-		TokenAmpersand, TokenVerticalLine, TokenLT, TokenGT, TokenEqual:
-		var inf InfixExpression
-		inf.Left = left
+	case TokenPlus:
 		e.nextToken()
-		inf.Operator = e.currentToken.Literal
-		inf.Right = e.compileExpression()
-		return &inf
+		e.compileExpression()
+		e.vmwriter.WriteArithmeric(CmdAdd)
+	case TokenMinus:
+		e.nextToken()
+		e.compileExpression()
+		e.vmwriter.WriteArithmeric(CmdSub)
+	case TokenAsterisk:
+		e.nextToken()
+		e.compileExpression()
+		e.vmwriter.WriteCall("Math.multiply", 2)
+	case TokenSlash:
+		e.nextToken()
+		e.compileExpression()
+		e.vmwriter.WriteCall("Math.divide", 2)
+	case TokenAmpersand:
+		e.nextToken()
+		e.compileExpression()
+		e.vmwriter.WriteArithmeric(CmdAnd)
+	case TokenVerticalLine:
+		e.nextToken()
+		e.compileExpression()
+		e.vmwriter.WriteArithmeric(CmdOr)
+	case TokenLT:
+		e.nextToken()
+		e.compileExpression()
+		e.vmwriter.WriteArithmeric(CmdLt)
+	case TokenGT:
+		e.nextToken()
+		e.compileExpression()
+		e.vmwriter.WriteArithmeric(CmdGt)
+	case TokenEqual:
+		e.nextToken()
+		e.compileExpression()
+		e.vmwriter.WriteArithmeric(CmdEq)
 	case TokenLParen:
-		e.nextToken()
-		var call SubroutineCallExpression
-		call.Func = left
+		e.expectPeek(TokenLParen)
+		nArgs := 0
+		if strings.HasPrefix(fn, ".") { /* when fn is a method */
+			// append class name
+			fn = entry.Type + fn
+			// instance is already on the top of stack
+			nArgs++
+		}
 		for e.peekToken.Kind != TokenRParen {
-			call.Args = append(call.Args, e.compileExpression())
+			e.compileExpression()
+			nArgs++
 			if e.peekToken.Kind == TokenComma {
 				e.nextToken()
 			} else {
@@ -336,8 +429,25 @@ func (e *CompilationEngine) compileExpression() Expression {
 			}
 		}
 		e.expectPeek(TokenRParen)
-		return &call
+		e.vmwriter.WriteCall(fn, nArgs)
 	}
+}
 
-	return left
+var labelSequence = 0
+
+func genLabel(prefix string) string {
+	label := fmt.Sprintf("%s.%d", prefix, labelSequence)
+	labelSequence++
+	return label
+}
+
+func storageToScope(storage string) Scope {
+	switch storage {
+	case "field":
+		return ScopeField
+	case "static":
+		return ScopeStatic
+	default:
+		panic("unknown storage class")
+	}
 }

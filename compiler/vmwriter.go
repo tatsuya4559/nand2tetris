@@ -79,4 +79,5 @@ func (w *VMWriter) WriteFunction(name string, nLocals int) {
 
 func (w *VMWriter) WriteReturn() {
 	w.writef("return")
+	w.writef("")
 }
